@@ -8,6 +8,8 @@ Use a separate **staging Supabase project** with synthetic data. Production is a
 
 ## Required secure settings
 
+Keep separate hosting environments, Supabase projects and operator records for local, staging and production. No staging deployment may receive production bindings. `supabase/config.toml` is **local CLI configuration** (loopback Auth URL and disabled local Storage); do not copy those Auth/Storage settings into a hosted project. Hosted settings are configured explicitly below; `db push` applies database migrations, not hosted Auth URL or backup configuration.
+
 - `NEXT_PUBLIC_SUPABASE_URL`: staging HTTPS project URL, then production URL in a separate environment.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: corresponding public/anon key. Rebuild after changing NEXT_PUBLIC values.
 - `SUPABASE_SERVICE_ROLE_KEY`: server-only runtime secret, never NEXT_PUBLIC or client bundle. Web use remains validated Storage upload/cleanup; dedicated operations runner calls only `run_scheduled_operations`. Never use this key for user business queries or auth authorization.
@@ -15,6 +17,21 @@ Use a separate **staging Supabase project** with synthetic data. Production is a
 - Hosting account/project and HTTPS app domain; Auth site URL and redirect allowlist must match exact HTTPS domain. Disable public signup; provision Auth users and active `profiles` with explicit role/assignment. MFA for admin and password/rate-limit settings need operations review.
 - `GAMI_SEED_PASSWORD` and `GAMI_ALLOW_DEMO_SEED=yes` only in a dedicated local/staging demo provisioning job; not production web runtime.
 - PILOT_MODE is **database config**, changed in `/admin/operations`; no conflicting environment flag. Select valid teacher/class pairs before enabling pilot mode.
+
+Hosted preflight metadata: `GAMI_DEPLOY_ENVIRONMENT=staging` (or `production`), `GAMI_APP_URL` equal to the exact HTTPS app origin, and `SUPABASE_PROJECT_REF` equal to that environment's project ref. These three names are deployment checks, not new business flags. Keep `GAMI_SEED_PASSWORD` unset and `GAMI_ALLOW_DEMO_SEED=no` in web/runner runtime. Provision synthetic accounts in a separate, explicitly authorized staging job.
+
+From the hosting environment with secure bindings already injected:
+
+```bash
+node scripts/check-deployment.mjs
+npm ci
+npm run build
+npm start -- --hostname 127.0.0.1
+```
+
+Preflight prints only status/error categories and binding names, never values. It rejects HTTP/loopback/non-origin URLs, wrong standard Supabase project URL, JWT role/ref/expiry mixups, public secret bindings, seed credentials and conflicting Vercel environment classification. Legacy JWT claims are metadata checks, **not signature verification**. Modern publishable/secret keys are opaque: their project cannot be established offline; confirm project membership in secure provider settings and authenticated staging smoke tests. Custom Supabase domains require a separately reviewed matching check; this preparation uses the standard project-ref.supabase.co origin.
+
+No deployment is authorized by preflight PASS alone. Build does not need Docker or reachable Supabase; CI builds before starting services. Actual web functionality still needs valid runtime bindings. NEXT_PUBLIC values are baked into client artifacts: build staging and production separately, never promote a staging public-key bundle into production unchanged.
 
 ## Migrations and deployment order
 
@@ -26,6 +43,36 @@ Use a separate **staging Supabase project** with synthetic data. Production is a
 6. Deploy Node22+ web runtime (24 tested), `npm ci`, `npm run build`, `npm start`. Use a Node-capable host with server actions and streaming; this is not a static export. Example supported approach: container/VM behind HTTPS reverse proxy with 41MiB body limit; validate chosen managed-host limits before selection.
 7. Test `/api/health` (Auth/REST/Storage reachability), anonymous protected routes, six-role auth/RLS, private upload/download, schedule conflict, correction, audit and telemetry on staging with synthetic fixtures. Do not run this repository's local-only E2E directly against production.
 8. Configure operational scheduler, then 1–2 pilot pairs for one week. Confirm manual iPhone Add to Home Screen and real checkout measurement. Remove demo fixtures from production by provisioning a clean production project, not deleting histories ad hoc.
+
+For an existing current-main database at Phase3, 001–011 are already applied and this staging-readiness branch adds **no migration**. Verify history and checksums, expect a no-op dry run, and do not reapply historical SQL manually. For a new hosted project, apply 001→011 in filename order; 002 creates the private attachment bucket, 003 grants Storage access under RLS, 007 changes legacy cache metadata to no-store, and 011 restricts privileged operations writes. Policy/function replacement and the cache metadata update are intentional; there is no DROP/TRUNCATE of business tables. Review any pre-existing bucket/policy conflict before pushing.
+
+CLI staging preparation (placeholders are project identifiers, never credentials):
+
+```bash
+supabase link --project-ref <verified-staging-ref>
+supabase migration list
+supabase db push --dry-run
+```
+
+Pin the organization's reviewed Supabase CLI version in deployment tooling. Read the dry-run list before an authorized push; store only sanitized migration filenames/status with release SHA. Do not use migration repair to mark unexecuted SQL as applied. CLI login/database access must use secure bindings or interactive provider authentication; no password argument in shared shell history/logs.
+
+## Hosting choice and HTTPS
+
+**Default: a Node24 VM/container host behind an HTTPS reverse proxy**, with ≥41 MiB request body support, sufficient upload memory and request timeouts, streaming downloads and private server secrets. The repository uses standard Next build/start; no localhost/cloud domain is hardcoded in application routing. Bind Node to loopback, expose only HTTPS through the proxy, preserve the original Host and trusted X-Forwarded-Proto, and reject direct upstream access. Do not add wildcard Server Action allowed origins to work around proxy errors. Test login redirects stay on the exact HTTPS origin and upload Origin checks pass.
+
+For nginx, set `client_max_body_size 41m` and forwarding Host/protocol headers in the reviewed HTTPS vhost. Use real certificate issuance/renewal, no TLS verification bypass. Redact query strings, cookies, authorization and bodies from proxy/platform logs; restrict access and retention. Upload smoke must exercise a valid near-limit image/video, not just a tiny fixture.
+
+**Vercel:** standard Next build/SSR/routes are compatible, with separate Preview/staging and Production variable scopes and Node24 selected. However, [Vercel Functions request body limits](https://vercel.com/docs/functions/limitations#request-body-size) are substantially below the current 40 MiB MP4 contract. Next's 41mb setting does not raise the platform limit. Full staging upload acceptance on Vercel is blocked until the current route's actual limits are verified or a reviewed equivalent host supports it. Do not shrink accepted uploads or invent direct browser Storage writes to claim readiness. No vercel.json/public cron endpoint or deployment has been added.
+
+## Hosted Auth and Storage acceptance
+
+- Auth Site URL = exact staging HTTPS origin. Allow only exact approved redirect URLs; no localhost, arbitrary preview wildcard or production origin in staging. Current password login redirects to server-selected role paths and accepts no caller-supplied next URL. Any future OAuth/reset URL requires a new review; it is not implemented here.
+- Disable public signup, provision the actual Auth UUID→profile role/active/class/CSKH assignments, and verify account suspension with an existing session. Managed Auth SMTP/confirmation settings are provider configuration, not copied from local test settings.
+- Confirm Storage bucket `session-attachments`: `public=false`, max41943040 bytes, MIME JPEG/PNG/WEBP/MP4; image app limit10 MiB, video40 MiB. Only validated server upload/cleanup uses privileged key. Caller JWT/RLS controls metadata and signed download, and the proxy returns private/no-store. Ordinary SDK writes must remain denied; CSKH/media/wrong-class teacher cannot download. A server-held signed capability lasts up to60s; it is never returned as a public cached link.
+- API exposes `public` only; `private` helper schema stays unexposed. Service scheduled RPC EXEC remains restricted, and direct new operations table writes remain denied even with service role.
+- Smoke `/api/health`: 200 `{status:ok}` when Auth/REST/Storage reachable, 503 `{status:unavailable}` on dependency failure, always private/no-store. This public minimal endpoint has no debug payload, secrets or PII; apply host rate limits and alerting. It proves reachability, not all business authorization.
+
+Record provider-specific results and blockers in [STAGING_CHECKLIST.md](STAGING_CHECKLIST.md). Run the actual iPhone/pilot procedure in [PILOT_RUNBOOK.md](PILOT_RUNBOOK.md).
 
 ## Deterministic scheduler
 
@@ -39,6 +86,10 @@ select cron.schedule('gami-operations', '*/10 * * * *',
 ```
 
 Check `cron.job_run_details` for success/failure, alert on failures/no successful run for >30min. Central thresholds are editable by admin; defaults session2h/12h, task24h/48h, high4h, horizon14days. Advisory locks and unique recipient+dedupe keys allow concurrent/manual retries. When PILOT_MODE is ON, new recurrence/escalation is scoped to selected valid pairs; Phase2 checkout remains available elsewhere, correction requests restricted to pilot teachers/classes. Tasks outside pilot class do not receive pilot escalation.
+
+Enable Supabase Cron/pg_cron through the provider before scheduling; the SQL is a setup plan, not proof a job exists. DB-owner execution avoids an HTTP endpoint and external auth secret: limit SQL/job management to trusted operators, revoke ordinary users' ability to edit cron jobs. Check for an existing job of the same name before registration. Failure is retried by the next10-minute run; transactional rollback, advisory locks and unique keys make replay safe. Operator may invoke the admin runner once, then verify no duplicate session/notice. Record actual last-success time and alert delivery before pilot. Pause with `cron.unschedule('gami-operations')`, verify no future runs and account for any in-flight run.
+
+Alternative private runner uses that project's service key from a server-only secret store and calls the EXEC-restricted RPC over HTTPS. It needs no new public endpoint or shared public cron token. Restrict runner access, log only count/code/time, rotate/rebind on incident and retry with bounded backoff; the normal10-minute schedule is sufficient for staging. Select pg_cron unless that project's plan cannot support it.
 
 Alternative private runner (Node22+, secure service binding, never browser):
 

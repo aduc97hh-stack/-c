@@ -101,3 +101,7 @@ Lịch lặp + date-specific exceptions, audited correction amendments (original
 Migrations008–011 additive; 001–007 giữ nguyên. `npm run test:db` kiểm fresh và Phase2-data upgrade. `bash scripts/test-recovery.sh` kiểm pg_dump/restore synthetic + RLS. Dedicated runner: `node --env-file=.env.local scripts/run-operations.mjs` chỉ local hoặc secure server environment (không seed production). Quality CI chạy thêm Auth/Storage E2E, audit và recovery.
 
 Local startup mặc định project gami-phase2 vì giữ volume dữ liệu cũ. Để kiểm thử fresh riêng, dùng COMPOSE_PROJECT_NAME đã chọn thống nhất trong startup/E2E; không xóa volume đang có dữ liệu người dùng. PWA requires HTTPS (loopback only for local tests); service worker caches no PII.
+
+## Staging preparation
+
+Phase 3 đã merge; staging readiness không thêm nghiệp vụ hay migration. Xem [STAGING_CHECKLIST.md](docs/STAGING_CHECKLIST.md) và [PILOT_RUNBOOK.md](docs/PILOT_RUNBOOK.md) cho cấu hình hosted, rehearsal restore và test Safari thật. Khi hosting đã inject bindings an toàn, chạy `node scripts/check-deployment.mjs` trước build; đây chỉ là preflight metadata, không deploy hay chứng minh key/host đã hoạt động. Production build không cần Docker. Hosting phải đáp ứng upload MP440 MiB; không mặc định coi giới hạn Functions của Vercel đáp ứng được. Chưa deploy staging hoặc test iPhone thật.
