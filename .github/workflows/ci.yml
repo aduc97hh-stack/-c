@@ -5,16 +5,32 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: gami-ci
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
       - name: PostgreSQL RLS integration
         run: bash scripts/test-db.sh
+      - name: Synthetic database recovery
+        run: bash scripts/test-recovery.sh
+      - run: npm audit
+      - name: Install browser and media fixture tools
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+      - name: Dedicated local Auth/Storage test stack
+        run: bash scripts/start-local.sh
+      - run: npm run build
+      - run: npm run test:e2e
+      - run: python3 scripts/scan-secrets.py
+      - run: git diff --check

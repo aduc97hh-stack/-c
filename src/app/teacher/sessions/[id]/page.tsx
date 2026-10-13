@@ -1,3 +1,6 @@
+import { CorrectionForm } from "@/features/operations/correction-form";
+import { supabaseServer } from "@/lib/supabase/server";
+import { checked } from "@/server/teaching";
 import Link from "next/link";
 import { sessionData } from "@/server/teaching";
 import { startSession } from "@/features/teaching/actions";
@@ -12,6 +15,14 @@ export default async function Page({
   const { id } = await params;
   const data = await sessionData(id);
   const { session, profile } = data;
+  const db = await supabaseServer();
+  const corrections =
+    checked(
+      await db
+        .from("session_corrections")
+        .select("id,field_name,status,review_note")
+        .eq("session_id", id),
+    ) ?? [];
   const mayEdit = profile.role === "admin" || session.teacher_id === profile.id;
   const names = Object.fromEntries(
     data.students.map((s) => [s.id, s.full_name]),
@@ -63,6 +74,32 @@ export default async function Page({
             })),
           }}
         />
+      )}
+      {session.status === "completed" &&
+        profile.role === "teacher" &&
+        mayEdit && (
+          <CorrectionForm
+            sessionId={id}
+            records={data.records.map((r) => ({
+              ...r,
+              teacher_note: notes[r.id] ?? "",
+            }))}
+            names={names}
+            content={session.lesson_content}
+            homework={session.homework_assigned}
+          />
+        )}
+      {corrections.length > 0 && (
+        <section className="card">
+          <h2>Lịch sử chỉnh sửa</h2>
+          <ul>
+            {corrections.map((c) => (
+              <li key={c.id}>
+                {c.field_name} · {c.status} · {c.review_note}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       {session.status === "scheduled" || session.status === "cancelled" ? (
         <Attachments sessionId={id} initial={data.attachments} locked />

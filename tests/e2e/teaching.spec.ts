@@ -30,14 +30,31 @@ async function setup() {
   const id = (await teacher.auth.getUser()).data.user!.id;
   const title = "Speed checkout " + Date.now();
   const day = schoolDate();
-  const uniqueStart = new Date(
-    new Date(day + "T08:00:00+07:00").getTime() + (Date.now() % 3600000),
-  );
+  const base = new Date(day + "T00:00:00+07:00").getTime();
+  const busy =
+    (
+      await admin
+        .from("class_sessions")
+        .select("starts_at,ends_at")
+        .eq("teacher_id", id)
+        .neq("status", "cancelled")
+        .lt("starts_at", new Date(base + 86400000).toISOString())
+        .gt("ends_at", new Date(base).toISOString())
+    ).data ?? [];
+  let slot = base + 7 * 3600000;
+  while (
+    busy.some(
+      (s) =>
+        +new Date(s.starts_at) < slot + 120000 && +new Date(s.ends_at) > slot,
+    )
+  )
+    slot += 180000;
+  const uniqueStart = new Date(slot);
   const result = await admin.rpc("create_class_session", {
     p_class: "21000000-0000-0000-0000-000000000001",
     p_teacher: id,
     p_start: uniqueStart.toISOString(),
-    p_end: new Date(uniqueStart.getTime() + 3600000).toISOString(),
+    p_end: new Date(uniqueStart.getTime() + 120000).toISOString(),
     p_title: title,
   });
   if (result.error)

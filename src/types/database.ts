@@ -1,4 +1,15 @@
 import type {
+  ScheduleTemplate,
+  ScheduleRule,
+  Correction,
+  Notice,
+  PilotEvent,
+  AuditEvent,
+  OperationRules,
+  PilotMetrics,
+  OperationsSummary,
+} from "@/features/operations/model";
+import type {
   Session,
   LearningRecord,
   Task,
@@ -19,6 +30,50 @@ type Table<Row, Required extends keyof Row> = {
 export type Database = {
   public: {
     Tables: {
+      class_schedule_templates: Table<
+        ScheduleTemplate,
+        "class_id" | "teacher_id" | "starts_on" | "ends_on" | "created_by"
+      >;
+      schedule_rules: Table<
+        ScheduleRule,
+        "template_id" | "weekday" | "starts_local" | "ends_local"
+      >;
+      session_corrections: Table<
+        Correction,
+        | "session_id"
+        | "field_name"
+        | "old_value"
+        | "new_value"
+        | "reason"
+        | "requested_by"
+      >;
+      notifications: Table<
+        Notice,
+        | "user_id"
+        | "type"
+        | "title"
+        | "message"
+        | "link"
+        | "entity_type"
+        | "entity_id"
+        | "dedupe_key"
+      >;
+      audit_events: Table<AuditEvent, "action" | "entity_type" | "entity_id">;
+      pilot_config: Table<{ id: boolean; pilot_mode: boolean }, "id">;
+      pilot_assignments: Table<
+        { teacher_id: string; class_id: string },
+        "teacher_id" | "class_id"
+      >;
+      pilot_events: Table<
+        PilotEvent,
+        | "attempt_id"
+        | "session_id"
+        | "user_id"
+        | "event_type"
+        | "student_count"
+        | "exception_count"
+        | "device_category"
+      >;
       class_sessions: Table<
         Session,
         | "class_id"
@@ -110,8 +165,106 @@ export type Database = {
         "cskh_id" | "student_id"
       >;
     };
-    Views: Record<string, never>;
+    Views: {
+      effective_session_records: { Row: LearningRecord; Relationships: [] };
+    };
     Functions: {
+      session_effective_content: {
+        Args: { p_session: string };
+        Returns: {
+          lesson_content: string;
+          homework_assigned: string;
+          notes: { record_id: string; teacher_note: string }[];
+        };
+      };
+      request_correction: {
+        Args: {
+          p_session: string;
+          p_record: string | null;
+          p_field: string;
+          p_value: string;
+          p_reason: string;
+        };
+        Returns: string;
+      };
+      review_correction: {
+        Args: { p_id: string; p_approve: boolean; p_note: string };
+        Returns: undefined;
+      };
+      save_schedule: {
+        Args: {
+          p_class: string;
+          p_teacher: string;
+          p_from: string;
+          p_until: string;
+          p_weekdays: number[];
+          p_start: string;
+          p_end: string;
+          p_replace?: string | null;
+          p_version?: number | null;
+        };
+        Returns: string;
+      };
+      generate_schedule: {
+        Args: { p_template: string; p_from: string; p_until: string };
+        Returns: { generated: number; conflicts: string[] };
+      };
+      session_exception: {
+        Args: {
+          p_session: string;
+          p_version: number;
+          p_cancel: boolean;
+          p_teacher?: string | null;
+          p_reason: string;
+        };
+        Returns: undefined;
+      };
+      mark_notification: { Args: { p_id: string }; Returns: undefined };
+      configure_pilot: {
+        Args: {
+          p_mode: boolean;
+          p_teacher: string;
+          p_class: string;
+          p_enable: boolean;
+        };
+        Returns: undefined;
+      };
+      open_pilot_checkout: {
+        Args: { p_session: string; p_device: string };
+        Returns: string | null;
+      };
+      record_pilot_error: {
+        Args: { p_attempt: string; p_error: string };
+        Returns: undefined;
+      };
+      operations_configuration: {
+        Args: Record<string, never>;
+        Returns: OperationRules;
+      };
+      configure_operations: {
+        Args: {
+          p_teacher_hours: number;
+          p_session_admin: number;
+          p_owner_hours: number;
+          p_task_admin: number;
+          p_high: number;
+          p_horizon: number;
+        };
+        Returns: undefined;
+      };
+      run_daily_operations: {
+        Args: Record<string, never>;
+        Returns: {
+          generated: number;
+          conflicts: number;
+          notifications: number;
+        };
+      };
+      pilot_metrics: { Args: Record<string, never>; Returns: PilotMetrics };
+      operations_summary: {
+        Args: Record<string, never>;
+        Returns: OperationsSummary;
+      };
       student_session_history: {
         Args: { p_student: string };
         Returns: {

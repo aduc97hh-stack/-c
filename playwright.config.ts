@@ -10,6 +10,7 @@ export default defineConfig({
   fullyParallel: false,
   timeout: 30000,
   use: {
+    actionTimeout: 15000,
     baseURL: "http://127.0.0.1:3000",
     viewport: { width: 390, height: 844 },
     trace: "off",

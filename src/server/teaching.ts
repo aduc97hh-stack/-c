@@ -22,28 +22,29 @@ export async function sessionData(id: string) {
   if (!session) notFound();
   const [records, students, attachments] = await Promise.all([
     db
-      .from("session_student_records")
+      .from("effective_session_records")
       .select("*")
       .eq("session_id", id)
       .order("student_id"),
     db.rpc("session_roster", { p_session: id }),
     db.from("session_attachments").select("*").eq("session_id", id),
   ]);
-  const notes = await db
-    .from("record_notes")
-    .select("*")
-    .in(
-      "record_id",
-      (checked(records) ?? []).map((r) => r.id),
-    );
+  const effective = required(
+    await db.rpc("session_effective_content", { p_session: id }),
+  );
+  const notes = effective.notes;
   const config = required(await db.rpc("teaching_configuration", {}));
   return {
     config,
     profile,
-    session,
+    session: {
+      ...session,
+      lesson_content: effective.lesson_content,
+      homework_assigned: effective.homework_assigned,
+    },
     records: checked(records) ?? [],
     students: checked(students) ?? [],
-    notes: checked(notes) ?? [],
+    notes,
     attachments: checked(attachments) ?? [],
   };
 }

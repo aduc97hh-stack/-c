@@ -1,8 +1,5 @@
 export type SessionStatus =
-  | "scheduled"
-  | "in_progress"
-  | "completed"
-  | "cancelled";
+  "scheduled" | "in_progress" | "completed" | "cancelled";
 export type TaskStatus =
   | "open"
   | "in_progress"
@@ -17,6 +14,8 @@ export type TaskType =
   | "teacher_review"
   | "general_attention";
 export type Session = {
+  template_id?: string | null;
+  exception_reason?: string;
   id: string;
   class_id: string;
   teacher_id: string;
@@ -202,4 +201,14 @@ export function inspectAttachment(bytes: Uint8Array) {
   )
     throw new Error("Ảnh tối đa 10 MB, video tối đa 40 MB.");
   return { mime, extension };
+}
+
+export function checkoutException(r: CheckoutRecord, lowScore: number) {
+  return (
+    r.attendance !== "present" ||
+    r.homework_status === "missing" ||
+    r.old_lesson_status === "needs_review" ||
+    (r.quick_score !== null && r.quick_score < lowScore) ||
+    r.needs_attention
+  );
 }

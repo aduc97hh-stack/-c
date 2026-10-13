@@ -18,6 +18,7 @@ export async function CommandCenter() {
         cao · {stats.unassigned} chưa có owner hợp lệ
       </p>
       <nav>
+        <Link href="/admin/operations">Vận hành / Pilot</Link>
         <Link href="/admin/sessions">Lịch lớp</Link>
         <Link href="/admin/tasks">Mission Board / phân công</Link>
       </nav>

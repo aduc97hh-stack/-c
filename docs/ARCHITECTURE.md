@@ -49,3 +49,7 @@ Sessions/checkout Phase 2; tasks Phase 3; Student 360/Pulse Phase 4; media priva
 ## Phase 2 implementation
 
 Feature module `src/features/teaching` cung cấp checkout, attachments, task board và shared types/time/validation. Server data layer scope theo RLS, không N+1 ở danh sách task; command aggregate ở PostgreSQL. Bảng/RPC/rule/storage contract và diagram workflow mô tả trong PHASE_2.md. Record notes tách bảng để không expose cho CSKH. Storage uploader server-only có service credential chỉ cho validated uploads; queries và signed URL dùng caller JWT. Migrations Phase 1 được giữ nguyên. Future modules trong phần roadmap gốc nay được mở rộng theo scope Phase 2 được giao, không có integration/automation nhắn tin.
+
+## Phase 3 implementation
+
+Operations module và RPC quản lý lịch lặp, correction amendments/effective academic view, audit/notifications và server-timed pilot events. Private deterministic runner dùng advisory lock, configurable thresholds và recipient/entity dedupe. Public scheduled wrapper chỉ service EXEC; ordinary business actions caller JWT. New table writes denied even service_role; function definer enforces business authorization. PWA worker network-only. See PHASE_3.md/DEPLOYMENT.md/BACKUP_RECOVERY.md for rollout and external prerequisites.

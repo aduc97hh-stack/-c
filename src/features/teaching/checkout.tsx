@@ -1,8 +1,24 @@
 "use client";
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  useSyncExternalStore,
+} from "react";
 import { saveCheckout } from "./actions";
 import type { CheckoutData, CheckoutRecord, Session } from "./model";
+import { checkoutException } from "./model";
 import Link from "next/link";
+import { openPilot, pilotError } from "@/features/operations/actions";
+function subscribeNetwork(callback: () => void) {
+  window.addEventListener("online", callback);
+  window.addEventListener("offline", callback);
+  return () => {
+    window.removeEventListener("online", callback);
+    window.removeEventListener("offline", callback);
+  };
+}
 export function Checkout({
   session,
   initial,
@@ -26,6 +42,39 @@ export function Checkout({
     [error, setError] = useState(""),
     [paused, setPaused] = useState(false),
     [message, setMessage] = useState("Draft đã tải từ server");
+  const online = useSyncExternalStore(
+    subscribeNetwork,
+    () => navigator.onLine,
+    () => true,
+  );
+  const attempt = useRef<Promise<string | null> | null>(null);
+  const errors = useRef<string[]>([]);
+  const flushErrors = useCallback(async () => {
+    const id = await attempt.current?.catch(() => null);
+    if (!id || !navigator.onLine) return;
+    for (const key of [...errors.current]) {
+      if (await pilotError(id, key).catch(() => false))
+        errors.current = errors.current.filter((k) => k !== key);
+    }
+  }, []);
+  function recordError() {
+    errors.current.push(crypto.randomUUID());
+    void flushErrors();
+  }
+  useEffect(() => {
+    if (session.status === "in_progress" && !attempt.current)
+      attempt.current = openPilot(
+        session.id,
+        innerWidth < 600 ? "mobile" : innerWidth < 1000 ? "tablet" : "desktop",
+      ).catch(() => null);
+    const on = () => {
+      void flushErrors();
+    };
+    window.addEventListener("online", on);
+    return () => {
+      window.removeEventListener("online", on);
+    };
+  }, [session.id, session.status, flushErrors]);
   const [saved, setSaved] = useState(JSON.stringify(initial));
   const dirty = JSON.stringify(data) !== saved;
   async function persist(complete = false) {
@@ -33,8 +82,13 @@ export function Checkout({
     setBusy(true);
     setError("");
     try {
+      if (complete) {
+        await attempt.current?.catch(() => null);
+        await flushErrors();
+      }
       const r = await saveCheckout(session.id, version, data, complete);
       if (!r.ok) {
+        recordError();
         setError(r.error ?? "Không lưu được");
         setPaused(true);
       } else {
@@ -49,6 +103,7 @@ export function Checkout({
         );
       }
     } catch {
+      recordError();
       setError(
         "Kết nối bị gián đoạn. Nội dung vẫn còn trên màn hình. Bấm thử lại.",
       );
@@ -89,15 +144,12 @@ export function Checkout({
     }));
     setPaused(false);
   }
-  const exceptions = data.records.filter(
-    (r) =>
-      r.attendance !== "present" ||
-      r.homework_status === "missing" ||
-      (r.quick_score !== null && r.quick_score < lowScore) ||
-      r.needs_attention,
+  const exceptions = data.records.filter((r) =>
+    checkoutException(r, lowScore),
   ).length;
   return (
     <>
+      <p aria-live="polite">{online ? "Online" : "Mất kết nối"}</p>
       <p role="status">
         {busy ? "Đang lưu…" : dirty ? "Có thay đổi chưa lưu" : message}
       </p>
