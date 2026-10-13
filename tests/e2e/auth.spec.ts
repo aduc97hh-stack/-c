@@ -20,10 +20,19 @@ async function signIn(index: number) {
 test("Anonymous protected routes always redirect to login", async ({
   page,
 }) => {
-  for (const role of ["admin", "teacher", "cskh", "media"]) {
+  for (const role of [
+    "admin",
+    "teacher",
+    "cskh",
+    "media",
+    "students/00000000-0000-0000-0000-000000000000",
+    "tasks/00000000-0000-0000-0000-000000000000",
+  ]) {
     const response = await page.request.get(`/${role}`, { maxRedirects: 0 });
     expect(response.status()).toBe(307);
-    expect(new URL(response.headers()["location"], response.url()).pathname).toBe("/login");
+    expect(
+      new URL(response.headers()["location"], response.url()).pathname,
+    ).toBe("/login");
     await page.goto(`/${role}`);
     await expect(page).toHaveURL(/\/login$/);
     await expect(
@@ -61,7 +70,9 @@ for (let i = 0; i < roles.length; i++) {
           exact: true,
         }),
       });
-      await expect(section.locator("li")).toHaveCount([15, 5, 10, 8, 7, 0][i]);
+      await expect(
+        section.locator("li").filter({ hasText: /DEMO-/ }),
+      ).toHaveCount([15, 5, 10, 8, 7, 0][i]);
     }
     expect(
       await page.evaluate(
@@ -85,7 +96,10 @@ test("Direct REST applies RLS, contact privacy and denies self-promotion", async
     const client = await signIn(i);
     const refresh = await client.auth.refreshSession();
     expect(refresh.error?.code ?? null).toBeNull();
-    const students = await client.from("students").select("id");
+    const students = await client
+      .from("students")
+      .select("id")
+      .like("student_code", "DEMO-%");
     expect(students.error?.code ?? null).toBeNull();
     expect(students.data?.length).toBe([15, 5, 10, 8, 7, 0][i]);
     const contacts = await client
@@ -111,7 +125,10 @@ test("Direct REST applies RLS, contact privacy and denies self-promotion", async
         data: { role: "admin" },
       });
       expect(metadata.error?.code ?? null).toBeNull();
-      const again = await client.from("students").select("id");
+      const again = await client
+        .from("students")
+        .select("id")
+        .like("student_code", "DEMO-%");
       expect(again.data?.length).toBe(5);
       const mutation = await client
         .from("students")
@@ -140,7 +157,10 @@ test("Disabled staff lose access with an existing session", async ({
       .update({ active: false })
       .eq("id", user.id);
     expect(disabled.error?.code ?? null).toBeNull();
-    const rows = await client.from("students").select("id");
+    const rows = await client
+      .from("students")
+      .select("id")
+      .like("student_code", "DEMO-%");
     expect(rows.data?.length).toBe(0);
     await page.goto("/teacher");
     await expect(page).toHaveURL(/\/login$/);

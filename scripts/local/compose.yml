@@ -1,4 +1,4 @@
-name: gami-phase1
+name: gami-phase2
 services:
   db:
     image: postgres:17
@@ -10,7 +10,7 @@ services:
     ports:
       - 127.0.0.1:54322:5432
     healthcheck:
-      test: [CMD-SHELL, pg_isready -U postgres]
+      test: [CMD-SHELL, pg_isready -U postgres -h 127.0.0.1]
       interval: 2s
       timeout: 2s
       retries: 30
@@ -45,10 +45,31 @@ services:
       PGRST_DB_SCHEMAS: public
       PGRST_DB_ANON_ROLE: anon
       PGRST_JWT_SECRET: ${JWT_SECRET:?}
+  storage:
+    image: supabase/storage-api:v1.33.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ANON_KEY: ${ANON_KEY:?}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY:?}
+      PGRST_JWT_SECRET: ${JWT_SECRET:?}
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/postgres?options=-csearch_path%3Dstorage%2Cpublic
+      POSTGREST_URL: http://rest:3000
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      FILE_SIZE_LIMIT: 41943040
+      TENANT_ID: gami
+      REGION: local
+      GLOBAL_S3_BUCKET: local
+      ENABLE_IMAGE_TRANSFORMATION: 'false'
+      LOG_LEVEL: error
+    volumes:
+      - storage_data:/var/lib/storage
   gateway:
     user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
     image: kong:2.8.1
-    depends_on: [auth, rest]
+    depends_on: [auth, rest, storage]
     ports:
       - 127.0.0.1:54321:8000
     environment:
@@ -64,3 +85,4 @@ services:
       - ../../.local/kong.yml:/config/kong.yml:ro
 volumes:
   db_data:
+  storage_data:

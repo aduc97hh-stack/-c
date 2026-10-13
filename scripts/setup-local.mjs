@@ -76,6 +76,14 @@ services:
         config:
           hide_credentials: true
       - name: cors
+  - name: storage
+    url: http://storage:5000
+    routes:
+      - name: storage
+        paths: ['/storage/v1']
+        strip_path: true
+    plugins:
+      - name: cors
 `;
 writeFileSync(".local/kong.yml", gateway, { mode: 0o600 });
 console.info("Local test stack configured. Secrets remain in ignored files.");
