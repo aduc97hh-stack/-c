@@ -56,4 +56,4 @@ Teaching Operations Core bao gồm deterministic rules, Auto Task V1, Mission Bo
 
 ## Scope Phase 3 được giao
 
-Production Pilot & Daily Operations: recurrence, audited amendments/task reconciliation, inbox/escalation, PWA, pilot timing and staging/recovery preparation. User explicitly authorized Phase2 merge after SHA/CI verification. Phase3 delivered via separate PR, no merge. Real hosted rollout/backup/hardware pilot still requires operator bindings and rehearsal. No Phase4 features.
+Production Pilot & Daily Operations: recurrence, audited amendments/task reconciliation, inbox/escalation, PWA, pilot timing and staging/recovery preparation. Phase3 PR#2 was squash merged after explicit authorization and SHA/CI verification. Staging readiness continues on a separate PR, without business expansion. Real hosted rollout/backup/hardware pilot still requires operator bindings and rehearsal. No Phase4 features.

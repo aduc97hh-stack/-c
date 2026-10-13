@@ -1,6 +1,6 @@
 # Phase 3 — Production Pilot & Daily Operations
 
-Phase2 PR#1 was merged after exact head f353d20 and GitHub Quality success, squash main4258c31. Phase3 is isolated on feature/phase-3-production-pilot; PR delivery must not merge Phase3.
+Phase2 PR#1 was merged after exact head f353d20 and GitHub Quality success, squash main4258c31. Phase3 was delivered on feature/phase-3-production-pilot as PR#2, then squash merged after explicit authorization and exact head0dea0a06/Quality verification. Main is now b864dba5684fdb04c816539c8fd440447892552f. Staging readiness is a separate reviewed PR; hosted pilot remains unverified and no Phase4 work is authorized.
 
 ## Data and workflows
 

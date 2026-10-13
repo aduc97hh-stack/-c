@@ -23,6 +23,8 @@ jobs:
       - name: Synthetic database recovery
         run: bash scripts/test-recovery.sh
       - run: npm audit
+      - name: Production build without Docker or service credentials
+        run: npm run build
       - name: Install browser and media fixture tools
         run: |
           npx playwright install --with-deps chromium
