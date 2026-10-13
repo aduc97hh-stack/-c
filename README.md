@@ -27,7 +27,7 @@ Xem `MASTER_SPEC.md` và thư mục `docs/`.
 
 ## Phase 1 — Nền tảng hiện tại
 
-Next.js App Router + TypeScript strict + Supabase Auth/PostgreSQL. Bốn dashboard thực sự được bảo vệ ở server và RLS. Các module nghiệp vụ sau Phase 1 chỉ là placeholder.
+Next.js App Router + TypeScript strict + Supabase Auth/PostgreSQL. Bốn dashboard thực sự được bảo vệ ở server và RLS. Teaching Operations Phase 2 đã triển khai; các module ngoài scope vẫn được ghi rõ trong roadmap.
 
 ### Yêu cầu
 
@@ -57,7 +57,7 @@ Nếu cài CLI bằng helper trong cloud, dùng `/workspace/tools/supabase` thay
 2. Sao chép `.env.example` thành `.env.local`; điền `NEXT_PUBLIC_SUPABASE_URL` và `NEXT_PUBLIC_SUPABASE_ANON_KEY` (khóa public/anon, không phải service role).
 3. Dùng CLI đã đăng nhập: `supabase link --project-ref <project-ref>`, kiểm tra `supabase db push --dry-run`, rồi `supabase db push`. Review migration trước khi áp dụng vào project có dữ liệu.
 4. Tạo người dùng qua Supabase Auth Admin/Dashboard; tạo `profiles` khớp UUID Auth và role bằng quản trị tin cậy. Không có trigger lấy role từ user metadata. Admin đầu tiên phải được cấp ngoài ứng dụng. Admin có thể quản lý hồ sơ nhân sự trong dashboard; đổi role yêu cầu gỡ assignment trước. Tài khoản admin được bảo vệ khỏi thao tác khóa/đổi role qua UI.
-5. Chỉ seed vào project thử nghiệm riêng: đặt server-only `SUPABASE_SERVICE_ROLE_KEY`, `GAMI_SEED_PASSWORD` (ít nhất 16 ký tự), `GAMI_ALLOW_DEMO_SEED=yes`; chạy `npm run seed`. Không seed production. Không cần service role key để chạy web app.
+5. Chỉ seed vào project thử nghiệm riêng: đặt server-only `SUPABASE_SERVICE_ROLE_KEY`, `GAMI_SEED_PASSWORD` (ít nhất 16 ký tự), `GAMI_ALLOW_DEMO_SEED=yes`; chạy `npm run seed`. Không seed production. Phase 2 upload cần service role key server-only; auth và business queries vẫn dùng caller JWT.
 6. Chạy `npm run build` sau khi thay đổi biến `NEXT_PUBLIC_*`, rồi `npm start`. Triển khai HTTPS; cấu hình Auth site URL tương ứng, rate limits, MFA cho admin và chính sách backup trước khi đưa dữ liệu thật vào.
 
 Không có credentials, ứng dụng vẫn lint/typecheck/build được; login hiển thị chưa cấu hình và từ chối đăng nhập. Không có auth giả hoặc bypass demo.
@@ -84,3 +84,12 @@ CI chạy install, lint, typecheck, unit test, production build không cần cre
 - [Phạm vi và nghiệm thu Phase 1](docs/PHASE1_ACCEPTANCE.md)
 
 Tài liệu nghiệp vụ gốc tiếp tục mô tả roadmap toàn sản phẩm, không có nghĩa tất cả module đã được xây dựng.
+
+
+## Phase 2 — Teaching Operations Core
+
+Đã có lịch hôm nay, admin tạo session, checkout theo ngoại lệ với autosave draft, transaction hoàn tất, rule engine/Auto Task, Mission Board, Student 360, Pulse, Command Center và attachment private. Chạy `bash scripts/start-local.sh` để cập nhật migrations/Storage và thêm lớp demo 15 HS. Sau đó `npm run build` và `npm start`, hoặc `npm run dev`. Xem [PHASE_2.md](docs/PHASE_2.md) cho workflow/RLS/config và giới hạn.
+
+Local Storage dùng volume private và không cần cloud credentials. Hosted Phase 2 cần `SUPABASE_SERVICE_ROLE_KEY` server-only cho upload đã validate (không dùng cho auth/query nghiệp vụ); giữ key trong environment settings, không commit/chat. Đây là thay đổi so với nguyên tắc web chỉ dùng public key của Phase 1. JPEG/PNG/WEBP ≤10 MiB; MP4 ≤40 MiB; cấu hình reverse proxy body limit ≥41 MiB.
+
+Quality đầy đủ: `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:db`, `npm run build`, `npm run test:e2e`, `npm audit --omit=dev`. E2E dùng local Supabase/Storage và Chromium; nếu ngoài cloud chưa có browser, chạy `npx playwright install chromium`. Video upload E2E dùng ffmpeg; cài ffmpeg bằng package manager hệ thống nếu chưa có. Audit toàn bộ dev vẫn có advisory kế thừa được ghi rõ trong SECURITY.md.

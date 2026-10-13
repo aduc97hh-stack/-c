@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { CommandCenter } from "@/features/teaching/command-center";
 import { requireRole } from "@/server/auth";
 import { dashboardData } from "@/server/dashboard";
 import { roleLabels, type Role } from "@/config/roles";
@@ -9,7 +11,7 @@ export async function Dashboard({ role }: { role: Role }) {
     <main className="shell">
       <header>
         <div>
-          <p className="eyebrow">GAMI OS · PHASE 1</p>
+          <p className="eyebrow">GAMI OS · PHASE 2</p>
           <span className="badge">{roleLabels[role]}</span>
         </div>
         <form action={logout}>
@@ -17,6 +19,16 @@ export async function Dashboard({ role }: { role: Role }) {
         </form>
       </header>
       <h1>Xin chào, {profile.full_name}</h1>
+      <nav>
+        {role === "teacher" && (
+          <>
+            <Link href="/teacher/today">Hôm nay</Link>
+            <Link href="/teacher/tasks">Việc kiểm tra lại bài</Link>
+          </>
+        )}
+        {role === "cskh" && <Link href="/cskh/tasks">Mission Board</Link>}
+      </nav>
+      {role === "admin" && <CommandCenter />}
       <p>Dữ liệu hiển thị theo phân công và quyền truy cập của bạn.</p>
       <section className="grid" aria-label="Tổng quan">
         {role !== "media" && (
@@ -60,7 +72,9 @@ export async function Dashboard({ role }: { role: Role }) {
             <ul>
               {data.students.map((s) => (
                 <li key={s.id}>
-                  {s.student_code} · {s.full_name}
+                  <Link href={`/students/${s.id}`}>
+                    {s.student_code} · {s.full_name}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -130,7 +144,7 @@ export async function Dashboard({ role }: { role: Role }) {
         <p>
           {role === "media"
             ? "Media Hub được kích hoạt ở Phase 5. Hiện tại chưa có dữ liệu media và chưa có quyền đọc dữ liệu học sinh."
-            : "Module sẽ được triển khai ở giai đoạn tiếp theo. Chưa có nghiệp vụ tự động hoặc dữ liệu giả lập kết quả."}
+            : "Các nghiệp vụ buổi học, công việc và hồ sơ học sinh đã sẵn sàng qua các liên kết phía trên."}
         </p>
       </section>
     </main>

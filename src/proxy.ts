@@ -15,7 +15,8 @@ export async function proxy(request: NextRequest) {
   );
   const config = supabaseConfig();
   let response = NextResponse.next({ request });
-  if (!config) return protectedRoute ? loginRedirect(response, request) : response;
+  if (!config)
+    return protectedRoute ? loginRedirect(response, request) : response;
   const client = createServerClient(config.url, config.key, {
     cookies: {
       getAll: () => request.cookies.getAll(),

@@ -98,3 +98,16 @@
 - outcome
 - next_follow_up_at
 - created_at
+
+
+## Schema thực thi Phase 2 (ưu tiên hơn blueprint bên trên)
+
+- `class_sessions`: class/teacher FK, start/end UTC, lesson/content/homework, status enum, optimistic version, created_by/updated_by/completed_by/at; unique class + start.
+- `session_student_records`: roster snapshot qua start RPC, session+student unique, attendance/homework/old_lesson enum, score 0–10 nullable, attention boolean + constrained reasons array.
+- `record_notes`: teacher_note riêng, teacher/admin RLS; không có note text trong core records/events CSKH.
+- `tasks`: typed kind/priority/status, student/source session/record, owner nullable/backup, result/follow-up/deadline, version/audit; unique active student+type.
+- `student_events`: typed allowed event names, summary không private note, unique idempotency_key, actor/time/source task/session.
+- `session_attachments`: session/student optional, actor, UUID storage path, validated MIME/size, private object; download qua RLS.
+- `private.teaching_rules`: canonical threshold config; version bằng migration.
+
+Teacher/CSKH assignments, students.class_id và parent contacts từ Phase 1 được giữ nguyên; không thêm tuition, marketing media hoặc parent_contacts nghiệp vụ trong Phase 2.

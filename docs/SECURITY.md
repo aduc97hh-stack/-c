@@ -24,9 +24,14 @@ Cấu hình HTTPS, Auth site URL, tắt signup, chính sách password/rate-limit
 
 Không coi lint/build hay kiểm thử local là chứng nhận bảo mật hoặc xác nhận cấu hình hosted. Re-run auth/RLS smoke tests sau migration trên staging, dùng dữ liệu giả lập. Không in secret trong log hoặc báo cáo test; báo lỗi bằng code/ngữ cảnh không nhạy cảm.
 
+## Dependency audit và bản thay thế an toàn
 
-## Dependency advisory hiện tại
+Phase 1 phát hiện advisory high [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) trong chuỗi lint `fast-glob → micromatch → braces`. Phase 2 thay riêng dependency `fast-glob` của `@next/eslint-plugin-next` bằng alias npm `tinyglobby@0.2.15`, không downgrade Next 16 hoặc tắt rule. Plugin chỉ dùng `globSync` cho rootDir; test kiểm directory-only, brace patterns, no match và thực thi rule `no-html-link-for-pages` với rootDir glob để xác nhận vẫn bắt lỗi navigation. Các đường dẫn relative/trailing slash của tinyglobby trỏ cùng thư mục khi consumer dùng path.join/fs.
 
-Audit production (`npm audit --omit=dev`) không phát hiện lỗ hổng đã biết trong lần kiểm tra Phase 1. Audit đầy đủ báo một advisory high [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm), được quy vào 5 package dev của chuỗi `eslint-config-next → @next/eslint-plugin-next → fast-glob → micromatch → braces` (stack exhaustion với brace pattern lồng sâu). Registry hiện trả braces 3.0.3; audit đánh dấu tất cả phiên bản, chưa có bản vá tương thích được xác nhận. Gợi ý `audit fix --force` hạ eslint-config-next xuống Next 14, không phù hợp stack Next 16.
+Frozen lockfile lưu bản thay thế. Audit đầy đủ và production hiện đều không có advisory. Đây là kết quả tại thời điểm kiểm tra, không thay thế việc theo dõi dependency sau rollout.
 
-Chuỗi này không nằm trong dependency production. Trong cấu hình hiện tại, không khai báo `settings.next.rootDir`; code Next plugin chỉ gọi fast-glob khi cấu hình rootDir string/array được cung cấp. Không truyền glob từ dữ liệu người dùng vào lint. Giữ cấu hình lint trong repository được kiểm soát, không nhận glob không tin cậy, và cập nhật khi upstream có bản vá. Đây là advisory còn tồn tại, **audit toàn bộ dependency chưa PASS**, không bị che bằng downgrade hoặc tắt rule.
+## Phase 2 security boundary
+
+Xem PHASE_2.md: tất cả bảng mới RLS, chỉ RPC được mutate, completed immutable, optimistic version + row lock/unique keys, SQL fail-closed kể cả role NULL/inactive. CSKH không nhận private notes; media/CSKH không ký URL attachment.
+
+Ngoại lệ service-role: `src/server/storage.ts` dùng key server-only cho byte-validated upload/orphan cleanup sau khi kiểm active profile/session/teacher owner. Không dùng service role cho đọc nghiệp vụ, xác minh role hay signed download. Authenticated không có Storage insert/update policy, nên gọi trực tiếp SDK không bypass file validation. File path sinh server, giới hạn stream/body, magic bytes + size checks; metadata RPC đối chiếu trusted uploaded_by/size/MIME. URL signed 60 giây là capability ngắn hạn, có thể dùng đến hết TTL, không bảo đảm revoke tức thì. Không public bucket, không marketing consent tự động.

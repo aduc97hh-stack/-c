@@ -48,3 +48,8 @@
 - Gợi ý nội dung CSKH
 - Gợi ý phân loại media
 - Không tự đánh giá chuyên môn thay giáo viên
+
+
+## Scope cập nhật theo yêu cầu Phase 2
+
+Teaching Operations Core bao gồm deterministic rules, Auto Task V1, Mission Board, Student 360 timeline/Pulse V1, Command Center và attachment private tối thiểu ngay trong Phase 2. Các mục này là mở rộng scope đã được giao, không phải tự bắt đầu Phase 3. Phase 3 tiếp theo nên ưu tiên pilot 60–90 giây, correction/audit workflow, escalation cấu hình và cải thiện triage; không triển khai trước khi review Phase 2. Media Hub marketing/approval, Zalo, tuition, AI và iOS vẫn là các phase sau.

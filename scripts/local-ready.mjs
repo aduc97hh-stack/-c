@@ -18,7 +18,15 @@ for (let attempt = 0; attempt < 30; attempt++) {
         signal: AbortSignal.timeout(2000),
       },
     );
-    if (response.ok) {
+    if (
+      response.ok &&
+      (
+        await fetch(`${values.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/status`, {
+          headers: { apikey: values.NEXT_PUBLIC_SUPABASE_ANON_KEY },
+          signal: AbortSignal.timeout(2000),
+        })
+      ).ok
+    ) {
       ready = true;
       break;
     }

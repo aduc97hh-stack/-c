@@ -158,3 +158,102 @@ select {
   align-items: center;
   gap: 10px;
 }
+.card {
+  margin-bottom: 16px;
+}
+body {
+  overflow-wrap: anywhere;
+}
+fieldset {
+  border: 0;
+  padding: 0;
+  margin: 12px 0;
+}
+legend {
+  font-weight: 700;
+}
+fieldset button {
+  margin: 3px;
+  padding: 8px 12px;
+  background: #edf4f1;
+  color: #193a35;
+  border: 1px solid #8ca99f;
+}
+fieldset button[aria-pressed="true"] {
+  background: #006c59;
+  color: white;
+}
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  font: inherit;
+  border: 1px solid #8ca99f;
+  border-radius: 8px;
+  padding: 12px;
+}
+summary,
+.button-link {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+input[type="checkbox"] {
+  width: 24px;
+  min-height: 24px;
+  display: inline;
+  vertical-align: middle;
+}
+label:has(input[type="checkbox"]) {
+  min-height: 48px;
+}
+.bulk {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  background: #f5f8f7;
+  padding: 8px 0;
+  z-index: 1;
+}
+.checkout-footer {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  border: 1px solid #8ca99f;
+  padding: 12px;
+  border-radius: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.checkout-footer p {
+  width: 100%;
+  margin: 0;
+}
+.student-checkout h2 {
+  margin: 0;
+}
+.student-checkout input[type="number"] {
+  max-width: 120px;
+}
+nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.pulse {
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #edf4f1;
+}
+.pulse.red {
+  border: 2px solid #b42d34;
+}
+.pulse.yellow {
+  border: 2px solid #996a06;
+}
