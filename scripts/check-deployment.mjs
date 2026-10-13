@@ -34,6 +34,6 @@ if (!validKey(env.NEXT_PUBLIC_SUPABASE_ANON_KEY, "anon")) errors.add("invalid:pu
 if (!validKey(env.SUPABASE_SERVICE_ROLE_KEY, "service_role")) errors.add("invalid:server_key_role_or_project");
 if (env.NEXT_PUBLIC_SUPABASE_ANON_KEY === env.SUPABASE_SERVICE_ROLE_KEY) errors.add("invalid:keys_identical");
 for (const name of Object.keys(env)) if (name.startsWith("NEXT_PUBLIC_") && env[name] && (/SECRET|PASSWORD|SERVICE_ROLE/.test(name) || env[name] === env.SUPABASE_SERVICE_ROLE_KEY || env[name].startsWith("sb_secret_"))) errors.add(`forbidden_public_binding:${name}`);
-if (env.GAMI_SEED_PASSWORD || (env.GAMI_ALLOW_DEMO_SEED && env.GAMI_ALLOW_DEMO_SEED !== "no")) errors.add("forbidden:seed_in_web_environment");
+if (env.GAMI_SEED_PASSWORD || Object.keys(env).some((name) => /^GAMI_STAGING_.*_PASSWORD$/.test(name) && env[name]) || (env.GAMI_ALLOW_DEMO_SEED && env.GAMI_ALLOW_DEMO_SEED !== "no")) errors.add("forbidden:seed_in_web_environment");
 console.info(JSON.stringify({ event: "deployment_preflight", status: errors.size ? "FAIL" : "PASS", errors: [...errors], scope: "configuration_metadata_only" }));
 if (errors.size) process.exitCode = 1;

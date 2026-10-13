@@ -47,6 +47,7 @@ test("Hosted preflight blocks service role in public key and public secret bindi
 test("Hosted preflight excludes seed credentials/jobs from web runtime", () => {
   assert.equal(run({ GAMI_SEED_PASSWORD: "synthetic-password" }).status, 1);
   assert.equal(run({ GAMI_ALLOW_DEMO_SEED: "yes" }).status, 1);
+  assert.equal(run({ GAMI_STAGING_ADMIN_PASSWORD: "synthetic-password" }).status, 1);
 });
 test("Hosted preflight reports missing bindings by name without values", () => {
   const r = run({ SUPABASE_SERVICE_ROLE_KEY: "" });

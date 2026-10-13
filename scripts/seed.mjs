@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { assertSeedTarget } from "./seed-safety.mjs";
+assertSeedTarget(process.env);
 const {
   NEXT_PUBLIC_SUPABASE_URL: url,
   SUPABASE_SERVICE_ROLE_KEY: key,

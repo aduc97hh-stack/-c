@@ -104,4 +104,6 @@ Local startup mặc định project gami-phase2 vì giữ volume dữ liệu cũ
 
 ## Staging preparation
 
+Chủ trung tâm bắt đầu với [STAGING_STEP_BY_STEP_VI.md](docs/STAGING_STEP_BY_STEP_VI.md): chỉ tạo project Supabase staging trước. Bộ dữ liệu tối thiểu dùng `scripts/seed-staging.mjs`: 1 admin, 1 teacher, 1 CSKH, 1 lớp và15 HS giả lập; hosted phải có allowlist/ref staging rõ ràng. Seed demo cũ chỉ chạy local. Không đưa password provisioning vào hosting web hoặc chat.
+
 Phase 3 đã merge; staging readiness không thêm nghiệp vụ hay migration. Xem [STAGING_CHECKLIST.md](docs/STAGING_CHECKLIST.md) và [PILOT_RUNBOOK.md](docs/PILOT_RUNBOOK.md) cho cấu hình hosted, rehearsal restore và test Safari thật. Khi hosting đã inject bindings an toàn, chạy `node scripts/check-deployment.mjs` trước build; đây chỉ là preflight metadata, không deploy hay chứng minh key/host đã hoạt động. Production build không cần Docker. Hosting phải đáp ứng upload MP440 MiB; không mặc định coi giới hạn Functions của Vercel đáp ứng được. Chưa deploy staging hoặc test iPhone thật.
