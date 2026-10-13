@@ -2,6 +2,8 @@
 
 ## Current evidence and boundaries
 
+Owner-facing execution guide: [STAGING_STEP_BY_STEP_VI.md](STAGING_STEP_BY_STEP_VI.md). PR#3 readiness was merged at main20f73a62fc43cca0766b0a5f218d3575f7dcebd1. Minimal staged provisioning uses `scripts/seed-staging.mjs` with explicit staging project allowlist and three distinct protected passwords; old demo seed scripts are now local-only. Never place provisioning passwords/permission flags in the web runtime. The new guide/tools are delivered on a separate execution-plan PR until reviewed.
+
 Local Auth/PostgREST/Storage, fresh migrations and upgrade from Phase2 are tested. No hosted Supabase project, deployment platform account, HTTPS domain or cloud backup binding has been supplied/verified. This document prepares deployment; it does not claim cloud deployment or live scheduler.
 
 Use a separate **staging Supabase project** with synthetic data. Production is another project with real staff provisioned explicitly. Do not run demo seed in production. Preserve project refs and migration history; never reset a project with real data.

@@ -1,4 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
+import { assertSeedTarget } from "./seed-safety.mjs";
+assertSeedTarget(process.env);
 if (process.env.GAMI_ALLOW_DEMO_SEED !== "yes")
   throw new Error("Dedicated demo project required");
 const db = createClient(
