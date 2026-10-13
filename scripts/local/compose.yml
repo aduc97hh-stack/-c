@@ -1,0 +1,66 @@
+name: gami-phase1
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./bootstrap.sql:/docker-entrypoint-initdb.d/00-bootstrap.sql:ro
+    ports:
+      - 127.0.0.1:54322:5432
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  auth:
+    image: supabase/gotrue:v2.186.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      API_EXTERNAL_URL: http://127.0.0.1:54321
+      GOTRUE_SITE_URL: http://127.0.0.1:3000
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/postgres
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_LOG_LEVEL: warn
+      GOTRUE_DISABLE_SIGNUP: 'true'
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_MAILER_AUTOCONFIRM: 'true'
+  rest:
+    image: postgrest/postgrest:v14.3
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${POSTGRES_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET:?}
+  gateway:
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    image: kong:2.8.1
+    depends_on: [auth, rest]
+    ports:
+      - 127.0.0.1:54321:8000
+    environment:
+      KONG_PREFIX: /tmp/kong
+      KONG_DATABASE: 'off'
+      KONG_DECLARATIVE_CONFIG: /config/kong.yml
+      KONG_PROXY_LISTEN: 0.0.0.0:8000
+      KONG_ADMIN_LISTEN: 'off'
+      KONG_PLUGINS: key-auth,cors
+      KONG_PROXY_ACCESS_LOG: 'off'
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+    volumes:
+      - ../../.local/kong.yml:/config/kong.yml:ro
+volumes:
+  db_data:
