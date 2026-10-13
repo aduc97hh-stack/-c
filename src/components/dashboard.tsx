@@ -11,7 +11,7 @@ export async function Dashboard({ role }: { role: Role }) {
     <main className="shell">
       <header>
         <div>
-          <p className="eyebrow">GAMI OS · PHASE 2</p>
+          <p className="eyebrow">GAMI OS · DAILY OPERATIONS</p>
           <span className="badge">{roleLabels[role]}</span>
         </div>
         <form action={logout}>
@@ -20,6 +20,8 @@ export async function Dashboard({ role }: { role: Role }) {
       </header>
       <h1>Xin chào, {profile.full_name}</h1>
       <nav>
+        <Link href="/notifications">Thông báo</Link>
+        {role === "admin" && <Link href="/admin/operations">Vận hành / Pilot</Link>}
         {role === "teacher" && (
           <>
             <Link href="/teacher/today">Hôm nay</Link>

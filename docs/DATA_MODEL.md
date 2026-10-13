@@ -111,3 +111,7 @@
 - `private.teaching_rules`: canonical threshold config; version bằng migration.
 
 Teacher/CSKH assignments, students.class_id và parent contacts từ Phase 1 được giữ nguyên; không thêm tuition, marketing media hoặc parent_contacts nghiệp vụ trong Phase 2.
+
+## Phase 3 schema thực thi
+
+class_schedule_templates (date ranges/version/owner), schedule_rules (weekday/local time), class_sessions nullable template + exception reason; session_corrections typed field/old/new/reason/review chain; effective_session_records guarded academic projection; audit_events append-only safe metadata; notifications recipient/read/resolved/dedupe; pilot_config/pilot_assignments and immutable technical pilot_events. private.operations_rules centralizes thresholds/horizon. Effective private notes never join academic view. No edits to original completed records or roster.

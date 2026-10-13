@@ -24,7 +24,7 @@ export default async function Page({
       db.rpc("student_context", { p_student: id }),
       db.rpc("student_pulse", { p_student: id }),
       db
-        .from("session_student_records")
+        .from("effective_session_records")
         .select("*")
         .eq("student_id", id)
         .order("created_at", { ascending: false })

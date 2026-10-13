@@ -273,3 +273,7 @@ summary {
     position: static;
   }
 }
+
+.shell { padding-top: max(24px, env(safe-area-inset-top)); padding-bottom: max(24px, env(safe-area-inset-bottom)); }
+pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width:500px) { .shell { padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)); } }

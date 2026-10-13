@@ -30,6 +30,10 @@ export async function saveCheckout(
     p_complete: complete,
   });
   if (result.error || !result.data)
+    console.error("checkout_save_failed", {
+      code: result.error?.code ?? "unknown",
+    });
+  if (result.error || !result.data)
     return {
       ok: false as const,
       error:

@@ -11,7 +11,7 @@ function loginRedirect(response: NextResponse, request: NextRequest) {
 
 export async function proxy(request: NextRequest) {
   const protectedRoute =
-    /^\/(admin|teacher|cskh|media|students|tasks)(?:\/|$)/.test(
+    /^\/(admin|teacher|cskh|media|students|tasks|notifications)(?:\/|$)/.test(
       request.nextUrl.pathname,
     );
   const config = supabaseConfig();

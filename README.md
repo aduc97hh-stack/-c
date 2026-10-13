@@ -43,7 +43,7 @@ bash scripts/start-local.sh
 npm run dev
 ```
 
-Script local khởi động các image chính thức PostgreSQL 17, Supabase Auth, PostgREST và Kong; không bật storage/media hay module Phase 2. Nó tạo `.env.local` và `.local/` (quyền 0600/0700, gitignored) với khóa/mật khẩu ngẫu nhiên. Nó bảo toàn file hiện có và từ chối dùng cấu hình hosted để seed ngoài ý muốn. Chỉ gateway/database bind vào loopback; không expose admin API Kong. Đây là stack tối thiểu cho Phase 1, không bao gồm extension và dịch vụ Supabase chưa dùng. Cloud Docker dùng `vfs`, nên tránh image Supabase PostgreSQL rất lớn.
+Script local khởi động PostgreSQL17, Supabase Auth, PostgREST, Storage và Kong cho workflow đã triển khai. Nó tạo `.env.local` và `.local/` (quyền 0600/0700, gitignored) với khóa/mật khẩu ngẫu nhiên. Nó bảo toàn file hiện có và từ chối dùng cấu hình hosted để seed ngoài ý muốn. Chỉ gateway/database bind vào loopback; không expose admin API Kong. Đây là stack local tối thiểu, không bao gồm extension và dịch vụ Supabase chưa dùng. Cloud Docker dùng `vfs`, nên tránh image Supabase PostgreSQL rất lớn.
 
 Seed tạo 6 user bằng **Auth Admin API**, không chèn password vào bảng Auth. Tài khoản giả lập: `admin1@gami.example`, `teacher2@gami.example`, `teacher3@gami.example`, `cskh4@gami.example`, `cskh5@gami.example`, `media6@gami.example`. Mật khẩu nằm trong `GAMI_SEED_PASSWORD` của `.env.local`; không chia sẻ hoặc commit. Startup chỉ seed khi chưa có profile, giữ dữ liệu demo đã chỉnh sửa. Chạy `npm run seed` chủ động để làm mới fixture; seed lặp lại giữ nguyên password user đã tồn tại. Dữ liệu: 3 lớp, 15 học sinh giả lập; teacher 1 có A, teacher 2 có B/C; CSKH chia nhóm 8/7.
 
@@ -75,7 +75,7 @@ npm audit --omit=dev
 
 `test:db` dùng PostgreSQL 17 disposable, không mở port, kiểm migration và RLS thực tế. Auth schema trong test chỉ mô phỏng contract `auth.uid()`; không thay thế kiểm thử Supabase Auth. Sau khi chạy local Supabase và build, `npm run test:e2e` kiểm đăng nhập thật, sáu tài khoản, route protection, privacy/RLS qua REST và viewport iPhone. Test này chỉ chạy trên URL Supabase local; không chạy với dữ liệu thật.
 
-CI chạy install, lint, typecheck, unit test, production build không cần credentials và PostgreSQL RLS integration. E2E Supabase local được chạy riêng vì cần dịch vụ Docker và seed.
+CI chạy install, lint, typecheck, unit, PostgreSQL RLS fresh/upgrade, recovery, audit và secret/artifact scan. CI tự khởi tạo Auth/Storage local với credential test ngẫu nhiên, build rồi chạy toàn bộ E2E; không cần credential cloud thật.
 
 ### Tài liệu
 
@@ -92,4 +92,12 @@ Tài liệu nghiệp vụ gốc tiếp tục mô tả roadmap toàn sản phẩm
 
 Local Storage dùng volume private và không cần cloud credentials. Hosted Phase 2 cần `SUPABASE_SERVICE_ROLE_KEY` server-only cho upload đã validate (không dùng cho auth/query nghiệp vụ); giữ key trong environment settings, không commit/chat. Đây là thay đổi so với nguyên tắc web chỉ dùng public key của Phase 1. JPEG/PNG/WEBP ≤10 MiB; MP4 ≤40 MiB; cấu hình reverse proxy body limit ≥41 MiB.
 
-Quality đầy đủ: `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:db`, `npm run build`, `npm run test:e2e`, `npm audit --omit=dev`. E2E dùng local Supabase/Storage và Chromium; nếu ngoài cloud chưa có browser, chạy `npx playwright install chromium`. Video upload E2E dùng ffmpeg; cài ffmpeg bằng package manager hệ thống nếu chưa có. Audit toàn bộ dev vẫn có advisory kế thừa được ghi rõ trong SECURITY.md.
+Quality đầy đủ: `npm ci`, `npm run lint`, `npm run typecheck`, `npm test`, `npm run test:db`, `npm run build`, `npm run test:e2e`, `npm audit --omit=dev`. E2E dùng local Supabase/Storage và Chromium; nếu ngoài cloud chưa có browser, chạy `npx playwright install chromium`. Video upload E2E dùng ffmpeg; cài ffmpeg bằng package manager hệ thống nếu chưa có. Full và production audit đều sạch sau scoped lint dependency replacement.
+
+## Phase 3 — Production Pilot & Daily Operations
+
+Lịch lặp + date-specific exceptions, audited correction amendments (original completed immutable), audit/inbox/escalation, standalone PWA và server-timed pilot metrics. Admin chọn pilot pairs ở `/admin/operations`. Không bật cron/backup/cloud deployment tự động; xem [PHASE_3.md](docs/PHASE_3.md), [DEPLOYMENT.md](docs/DEPLOYMENT.md), [BACKUP_RECOVERY.md](docs/BACKUP_RECOVERY.md).
+
+Migrations008–011 additive; 001–007 giữ nguyên. `npm run test:db` kiểm fresh và Phase2-data upgrade. `bash scripts/test-recovery.sh` kiểm pg_dump/restore synthetic + RLS. Dedicated runner: `node --env-file=.env.local scripts/run-operations.mjs` chỉ local hoặc secure server environment (không seed production). Quality CI chạy thêm Auth/Storage E2E, audit và recovery.
+
+Local startup mặc định project gami-phase2 vì giữ volume dữ liệu cũ. Để kiểm thử fresh riêng, dùng COMPOSE_PROJECT_NAME đã chọn thống nhất trong startup/E2E; không xóa volume đang có dữ liệu người dùng. PWA requires HTTPS (loopback only for local tests); service worker caches no PII.
