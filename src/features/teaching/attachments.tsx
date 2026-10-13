@@ -38,6 +38,13 @@ export function Attachments({
   }
   async function view(id: string) {
     setError("");
+    // Open inside the user gesture; Safari blocks popups opened after await.
+    const popup = window.open("about:blank", "_blank");
+    if (!popup) {
+      setError("Cho phép mở tab để xem attachment.");
+      return;
+    }
+    popup.opener = null;
     try {
       const response = await fetch(
         `/api/sessions/${sessionId}/attachments?id=${id}`,
@@ -45,8 +52,9 @@ export function Attachments({
       const result = await response.json();
       if (!response.ok)
         throw new Error("Không có quyền xem hoặc không tạo được link");
-      window.open(result.url, "_blank", "noopener,noreferrer");
+      popup.location.replace(result.url);
     } catch (e) {
+      popup.close();
       setError(e instanceof Error ? e.message : "Không mở được attachment");
     }
   }

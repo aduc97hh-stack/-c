@@ -35,3 +35,9 @@ Frozen lockfile lưu bản thay thế. Audit đầy đủ và production hiện 
 Xem PHASE_2.md: tất cả bảng mới RLS, chỉ RPC được mutate, completed immutable, optimistic version + row lock/unique keys, SQL fail-closed kể cả role NULL/inactive. CSKH không nhận private notes; media/CSKH không ký URL attachment.
 
 Ngoại lệ service-role: `src/server/storage.ts` dùng key server-only cho byte-validated upload/orphan cleanup sau khi kiểm active profile/session/teacher owner. Không dùng service role cho đọc nghiệp vụ, xác minh role hay signed download. Authenticated không có Storage insert/update policy, nên gọi trực tiếp SDK không bypass file validation. File path sinh server, giới hạn stream/body, magic bytes + size checks; metadata RPC đối chiếu trusted uploaded_by/size/MIME. URL signed 60 giây là capability ngắn hạn, có thể dùng đến hết TTL, không bảo đảm revoke tức thì. Không public bucket, không marketing consent tự động.
+
+## Final gate trước merge Phase 2
+
+Session identity RPC chỉ trả id/name/code cho roster snapshot của session được phép đọc, không mở rộng students/contact RLS. Student academic history RPC trả id/status/starts_at, không cấp quyền notes/attachment cho giáo viên lớp mới. Completed history có DB triggers và parent row locks, kể cả request privileged REST thông thường. Owner validity dùng chung RLS + mutation + admin exception; multiple active CSKH owners fail closed.
+
+Signed Storage URLs được giữ ở server. Download stream kiểm caller RLS và trả private/no-store; không phụ thuộc cache headers của upstream. Nội dung blob không đổi; migration007 harden cache metadata của legacy objects. Upload validation vẫn chỉ server, service credential không vào client. Test race dùng parent-lock barrier thực sự, không dựa vào xác suất chạy hai request.

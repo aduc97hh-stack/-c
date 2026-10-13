@@ -40,14 +40,8 @@ export default async function Page({
     pulse = required(pulseResult),
     records = checked(recordsResult) ?? [],
     events = checked(eventsResult) ?? [];
-  const sessionIds = [...new Set(records.map((r) => r.session_id))];
   const sessions =
-    checked(
-      await db
-        .from("class_sessions")
-        .select("id,status,starts_at")
-        .in("id", sessionIds),
-    ) ?? [];
+    checked(await db.rpc("student_session_history", { p_student: id })) ?? [];
   const recent = records.filter((r) =>
     sessions.some(
       (s) =>

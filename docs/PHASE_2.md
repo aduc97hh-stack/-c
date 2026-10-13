@@ -46,7 +46,7 @@ Bucket `session-attachments` private. Teacher đúng session hoặc admin POST `
 
 Register RPC kiểm file thực sự tồn tại, trusted user_metadata.uploaded_by khớp auth.uid, size/MIME metadata khớp và session còn mutable. Nếu hoàn tất đồng thời với upload, registration bị từ chối và server cleanup file. Storage và DB không chung transaction; orphan chưa register không có read policy, có thể cần housekeeping sau lỗi cleanup hiếm gặp.
 
-Download dùng caller JWT qua RLS, chỉ teacher lớp được giao/admin; ký URL 60 giây, response private/no-store. URL là bearer capability có thể dùng đến hết TTL, kể cả sau revoke, không gửi vào log/timeline hay cho media/CSKH. URL public không hoạt động. Không làm approval, marketing media hoặc Media Hub. `media_permission` vẫn pending mặc định.
+Download dùng caller JWT qua RLS, chỉ teacher lớp được giao/admin. Signed Storage URL 60 giây chỉ ở server, file stream qua endpoint kiểm quyền với private/no-store. Không trả bearer URL ra browser/log/timeline; mỗi download kiểm lại quyền. URL public không hoạt động. Không làm approval, marketing media hoặc Media Hub. `media_permission` vẫn pending mặc định.
 
 ## RLS và audit
 
@@ -56,7 +56,7 @@ Audit: created_by, updated_by, completed_by/at; tasks giữ source session/recor
 
 ## Local và test
 
-`bash scripts/start-local.sh` khởi động official PostgreSQL/Auth/PostgREST/Storage/Kong, áp dụng migrations 002–005, seed lớp 15 HS/session demo, bảo toàn dữ liệu đã có. Storage file backend dùng Docker volume private cho local; production dùng Supabase managed Storage. Gateway signed download không đòi apikey vì bản thân token URL được Storage kiểm tra; upload/update vẫn cần JWT hợp lệ.
+`bash scripts/start-local.sh` khởi động official PostgreSQL/Auth/PostgREST/Storage/Kong, áp dụng migrations 002–007, seed lớp 15 HS/session demo, bảo toàn dữ liệu đã có. Storage file backend dùng Docker volume private cho local; production dùng Supabase managed Storage. Gateway signed download không đòi apikey vì bản thân token URL được Storage kiểm tra; upload/update vẫn cần JWT hợp lệ.
 
 Quality: frozen npm ci, lint, strict typecheck, unit, PostgreSQL/RLS matrix, E2E real Auth/Storage, production build và dependency audit đầy đủ/production. E2E gồm regression Phase 1; fixture Phase 1 được lọc mã DEMO để vẫn kiểm đúng scope khi thêm lớp P2. Fixture mới dùng P2, không sửa/xóa học sinh Phase 1. E2E tạo session mới mỗi lần, test dữ liệu giả lập riêng, không chạy hosted/production.
 
@@ -76,4 +76,8 @@ Chuỗi lint chứa advisory `braces` đã được thay bằng scoped `tinyglob
 
 Speed fixture đã chạy với 15 HS/14 bình thường, một HS có vắng không phép + thiếu BTVN + score 4: khoảng 10 core tap/field interactions, không thao tác từng học sinh bình thường. E2E còn thực hiện retry offline, refresh, negative upload và PNG/MP4; elapsed tự động được in theo lần chạy. Không đồng nhất automated elapsed với đo người dùng thật; pilot giáo viên/iPhone thật còn cần trước production rollout.
 
-Nghiệm thu cuối: 7 unit tests và 13 E2E tests PASS; PostgreSQL/RLS matrix PASS; lint/typecheck/production build PASS; npm audit đầy đủ/production 0 vulnerabilities. Speed fixture gần nhất: 10 core interactions, 6662 ms tự động gồm draft refresh và upload/security checks.
+Nghiệm thu cuối: 8 unit tests và 17 E2E tests PASS; PostgreSQL/RLS matrix PASS; lint/typecheck/production build PASS; npm audit đầy đủ/production 0 vulnerabilities. Speed fixture gần nhất: 10 core interactions, 6662 ms tự động gồm draft refresh và upload/security checks.
+
+## Final gate hardening
+
+Migrations 006–007 bổ sung identity RPC lấy roster từ session_student_records (không lọc class_id/active hiện tại), academic timestamp history sau chuyển lớp, row locks cho attachment registration, DB triggers chặn sửa/xóa completed history và thay roster identity, canonical owner-validity dùng chung cho RLS/RPC/Command Center. Rule missing homework lấy cửa sổ theo buổi completed mới nhất để không phụ thuộc thứ tự chốt. Private cache metadata của file cũ được giảm về max-age=0; frontend download qua no-store proxy để tránh upstream thiếu cache headers. Popup mở trong user gesture và xóa opener; keyboard focus tắt sticky bars trên mobile. Xem FINAL_GATE_PHASE_2.md.

@@ -11,7 +11,8 @@ export default async function Page({
 }) {
   const { id } = await params;
   const data = await sessionData(id);
-  const { session } = data;
+  const { session, profile } = data;
+  const mayEdit = profile.role === "admin" || session.teacher_id === profile.id;
   const names = Object.fromEntries(
     data.students.map((s) => [s.id, s.full_name]),
   );
@@ -20,12 +21,27 @@ export default async function Page({
   );
   return (
     <main className="shell">
-      <Link href="/teacher/today">← Hôm nay</Link>
+      <Link
+        href={profile.role === "admin" ? "/admin/sessions" : "/teacher/today"}
+      >
+        ← Lịch dạy
+      </Link>
       <h1>{session.lesson_title}</h1>
       <p>
         {displayTime(session.starts_at)} — {displayTime(session.ends_at)}
       </p>
-      {session.status === "scheduled" ? (
+      {!mayEdit && session.status !== "completed" ? (
+        <section className="card">
+          <h2>Chỉ xem buổi học</h2>
+          <p>Giáo viên phụ trách buổi học hoặc admin mới có thể cập nhật.</p>
+          <ul>
+            {data.records.map((r) => (
+              <li key={r.id}>{names[r.student_id]}</li>
+            ))}
+          </ul>
+          <Attachments sessionId={id} initial={data.attachments} locked />
+        </section>
+      ) : session.status === "scheduled" ? (
         <form action={startSession.bind(null, id)}>
           <p>Roster được chốt khi bắt đầu lớp.</p>
           <button>Bắt đầu lớp</button>

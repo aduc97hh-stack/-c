@@ -20,7 +20,14 @@ async function signIn(index: number) {
 test("Anonymous protected routes always redirect to login", async ({
   page,
 }) => {
-  for (const role of ["admin", "teacher", "cskh", "media"]) {
+  for (const role of [
+    "admin",
+    "teacher",
+    "cskh",
+    "media",
+    "students/00000000-0000-0000-0000-000000000000",
+    "tasks/00000000-0000-0000-0000-000000000000",
+  ]) {
     const response = await page.request.get(`/${role}`, { maxRedirects: 0 });
     expect(response.status()).toBe(307);
     expect(

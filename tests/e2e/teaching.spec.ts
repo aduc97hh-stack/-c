@@ -1,6 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { schoolDate } from "../../src/features/teaching/model";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -137,9 +137,12 @@ test("15-student speed flow, draft recovery, actual private uploads, atomic chec
     `/api/sessions/${id}/attachments?id=${attachment.id}`,
   );
   expect(signed.status()).toBe(200);
+  expect(signed.headers()["cache-control"]).toContain("no-store");
   const signedUrl = (await signed.json()).url;
   const image = await page.request.get(signedUrl);
   expect(image.status()).toBe(200);
+  expect(image.headers()["cache-control"]).toContain("private");
+  expect(image.headers()["cache-control"]).toContain("no-store");
   expect(await image.body()).toEqual(png);
   const publicFile = await page.request.get(
     url +
@@ -155,6 +158,14 @@ test("15-student speed flow, draft recovery, actual private uploads, atomic chec
   await expect(
     page.getByRole("button", { name: "Xem attachment 1", exact: true }),
   ).toBeVisible();
+  const popupPromise = page.waitForEvent("popup");
+  await page
+    .getByRole("button", { name: "Xem attachment 1", exact: true })
+    .click();
+  const popup = await popupPromise;
+  await popup.waitForURL(/api\/sessions\/.+content=1/);
+  expect(await popup.evaluate(() => window.opener)).toBeNull();
+  await popup.close();
   const directUpdate = await teacher.storage
     .from("session-attachments")
     .update(attachment.storage_path, Buffer.from("<script>bad</script>"), {
@@ -245,6 +256,7 @@ test("15-student speed flow, draft recovery, actual private uploads, atomic chec
   await expect(
     page.getByRole("heading", { name: "Việc hôm nay" }),
   ).toBeVisible();
+  expect((await page.request.get(signedUrl)).status()).toBe(403);
   const homework = tasks.data?.find((t) => t.type === "homework_followup");
   expect(homework).toBeTruthy();
   if (homework) {
@@ -283,6 +295,25 @@ test("15-student speed flow, draft recovery, actual private uploads, atomic chec
     .from("session-attachments")
     .createSignedUrl(attachment.storage_path, 60);
   expect(!!mediaSigned.error).toBe(true);
+  const wrongTeacher = await actor("teacher3@gami.example");
+  expect(
+    (await wrongTeacher.from("class_sessions").select("id").eq("id", id)).data,
+  ).toEqual([]);
+  expect(
+    (
+      await wrongTeacher
+        .from("session_attachments")
+        .select("id")
+        .eq("session_id", id)
+    ).data,
+  ).toEqual([]);
+  expect(
+    (
+      await wrongTeacher.storage
+        .from("session-attachments")
+        .createSignedUrl(attachment.storage_path, 60)
+    ).error,
+  ).toBeTruthy();
   const cskh = await actor("cskh4@gami.example");
   const cskhSigned = await cskh.storage
     .from("session-attachments")
@@ -361,4 +392,360 @@ test("Tampering, invalid scores, wrong student, stale drafts and concurrent comp
   expect(
     events.data?.filter((e) => e.event_type === "session_completed").length,
   ).toBe(15);
+});
+
+test("Historical roster remains visible after transfer/inactivation; 25-pupil mobile keyboard layout", async ({
+  page,
+}) => {
+  const { id, teacher } = await setup();
+  const extras = Array.from({ length: 10 }, (_, i) => ({
+    id: crypto.randomUUID(),
+    student_code: `GATE-${id.slice(0, 8)}-${i}`,
+    full_name: `Gate pupil ${i}`,
+    class_id: "21000000-0000-0000-0000-000000000001",
+  }));
+  expect((await service.from("students").insert(extras)).error).toBeNull();
+  try {
+    expect(
+      (await teacher.rpc("start_class_session", { p_session: id })).error,
+    ).toBeNull();
+    const roster = await teacher.rpc("session_roster", { p_session: id });
+    expect(roster.data?.length).toBe(25);
+    const late = {
+      ...extras[1],
+      id: crypto.randomUUID(),
+      student_code: `LATE-${id.slice(0, 8)}`,
+      full_name: "Late joiner",
+    };
+    expect((await service.from("students").insert(late)).error).toBeNull();
+    extras.push(late);
+    expect(
+      (
+        await service
+          .from("session_student_records")
+          .insert({ session_id: id, student_id: late.id })
+      ).error?.code,
+    ).toBe("55000");
+    const moved = extras[0];
+    expect(
+      (
+        await service
+          .from("students")
+          .update({
+            class_id: "20000000-0000-0000-0000-000000000002",
+            active: false,
+          })
+          .eq("id", moved.id)
+      ).error,
+    ).toBeNull();
+    const identities = await teacher.rpc("session_roster", { p_session: id });
+    expect(identities.data).toEqual(roster.data);
+    await login(page, "teacher2@gami.example");
+    await page.goto(`/teacher/sessions/${id}`);
+    await expect(page.locator(".student-checkout")).toHaveCount(25);
+    const pupil = page.locator(`[data-student="${moved.id}"]`);
+    await expect(
+      pupil.getByRole("heading", { name: moved.full_name }),
+    ).toBeVisible();
+    for (const width of [320, 390, 430]) {
+      await page.setViewportSize({ width, height: 844 });
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      ).toBe(true);
+    }
+    await page.setViewportSize({ width: 390, height: 420 });
+    await pupil.locator("summary").first().click();
+    const score = pupil.getByLabel(/Điểm /);
+    await score.focus();
+    await expect(page.locator(".checkout-footer")).toHaveCSS(
+      "position",
+      "static",
+    );
+    await expect(page.locator(".bulk")).toHaveCSS("position", "static");
+    await score.fill("8");
+    await page.getByLabel("Nội dung đã dạy").fill("Keyboard regression");
+    await expect(page.getByRole("status")).toContainText("Draft đã lưu");
+    await page.getByLabel("Nội dung đã dạy").blur();
+    for (const button of await page.locator("button:visible").all()) {
+      expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    }
+    await page
+      .getByRole("button", { name: "Hoàn thành buổi dạy", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Xác nhận hoàn thành", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Đã hoàn thành", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: moved.full_name, exact: true }),
+    ).toBeVisible();
+    const before = (
+      await service.from("class_sessions").select("*").eq("id", id).single()
+    ).data;
+    expect(
+      (
+        await service
+          .from("class_sessions")
+          .update({ lesson_content: "tamper", homework_assigned: "tamper" })
+          .eq("id", id)
+      ).error,
+    ).toBeTruthy();
+    expect(
+      (
+        await service
+          .from("session_student_records")
+          .update({ quick_score: 0 })
+          .eq("session_id", id)
+      ).error,
+    ).toBeTruthy();
+    expect(
+      (
+        await teacher.rpc("save_session_checkout", {
+          p_session: id,
+          p_version: 0,
+          p_data: { records: [], lesson_content: "tamper" },
+          p_complete: true,
+        })
+      ).data.replayed,
+    ).toBe(true);
+    expect(
+      (await service.from("class_sessions").select("*").eq("id", id).single())
+        .data,
+    ).toEqual(before);
+  } finally {
+    // Keep identities referenced by history; remove only their current roster eligibility.
+    expect(
+      (
+        await service
+          .from("students")
+          .update({ active: false })
+          .in(
+            "id",
+            extras.map((s) => s.id),
+          )
+      ).error,
+    ).toBeNull();
+  }
+});
+
+test("Two different sessions completing concurrently keep one active task per pupil/type", async () => {
+  const first = await setup(),
+    second = await setup();
+  for (const s of [first, second])
+    expect(
+      (await s.teacher.rpc("start_class_session", { p_session: s.id })).error,
+    ).toBeNull();
+  const payloads = await Promise.all(
+    [first, second].map(async (s) => ({
+      records: (
+        await s.teacher
+          .from("session_student_records")
+          .select("*")
+          .eq("session_id", s.id)
+      ).data!.map((r, i) => ({
+        ...r,
+        homework_status: i === 0 ? "missing" : "done",
+        quick_score: i === 0 ? 4 : null,
+        old_lesson_status: i === 0 ? "needs_review" : "passed",
+        teacher_note: "",
+      })),
+      lesson_content: "Concurrency",
+      homework_assigned: "",
+    })),
+  );
+  const results = await Promise.all(
+    [first, second].flatMap((s, i) =>
+      [0, 1].map(() =>
+        s.teacher.rpc("save_session_checkout", {
+          p_session: s.id,
+          p_version: 1,
+          p_data: payloads[i],
+          p_complete: true,
+        }),
+      ),
+    ),
+  );
+  expect(results.every((r) => !r.error)).toBe(true);
+  expect(results.filter((r) => r.data.replayed).length).toBe(2);
+  const pupil = payloads[0].records[0].student_id;
+  const tasks = (
+    await service
+      .from("tasks")
+      .select("type")
+      .eq("student_id", pupil)
+      .not("status", "in", "(done,cancelled)")
+  ).data!;
+  expect(new Set(tasks.map((t) => t.type)).size).toBe(tasks.length);
+  const events = (
+    await service
+      .from("student_events")
+      .select("idempotency_key,event_type,session_id")
+      .in("session_id", [first.id, second.id])
+  ).data!;
+  expect(new Set(events.map((e) => e.idempotency_key)).size).toBe(
+    events.length,
+  );
+  for (const s of [first, second])
+    expect(
+      events.filter(
+        (e) => e.session_id === s.id && e.event_type === "session_completed",
+      ),
+    ).toHaveLength(15);
+});
+
+test("Attachment registration waits for concurrent completion and cannot add completed metadata", async () => {
+  const { id, teacher } = await setup();
+  expect(
+    (await teacher.rpc("start_class_session", { p_session: id })).error,
+  ).toBeNull();
+  const actorId = (await teacher.auth.getUser()).data.user!.id;
+  const path = `${id}/${crypto.randomUUID()}.png`;
+  expect(
+    (
+      await service.storage.from("session-attachments").upload(path, png, {
+        contentType: "image/png",
+        cacheControl: "0",
+        metadata: { uploaded_by: actorId },
+      })
+    ).error,
+  ).toBeNull();
+  const records = (
+    await teacher
+      .from("session_student_records")
+      .select("*")
+      .eq("session_id", id)
+  ).data!;
+  const payload = JSON.stringify({
+    records: records.map((r) => ({ ...r, teacher_note: "" })),
+    lesson_content: "Locked completion",
+    homework_assigned: "",
+  }).replaceAll("'", "''");
+  const child = spawn(
+    "docker",
+    [
+      "compose",
+      "--env-file",
+      ".local/stack.env",
+      "-f",
+      "scripts/local/compose.yml",
+      "exec",
+      "-T",
+      "db",
+      "psql",
+      "-X",
+      "-At",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      "postgres",
+    ],
+    { stdio: ["pipe", "pipe", "pipe"] },
+  );
+  let stderr = "";
+  child.stderr.on("data", (d) => {
+    stderr += d.toString();
+  });
+  const exit = new Promise<void>((resolve, reject) => {
+    child.on("error", reject);
+    child.on("exit", (code) =>
+      code === 0
+        ? resolve()
+        : reject(new Error(`Completion transaction failed: ${stderr}`)),
+    );
+  });
+  void exit.catch(() => {});
+  const locked = new Promise<void>((resolve, reject) => {
+    child.on("error", reject);
+    child.stdout.on("data", (d) => {
+      if (d.toString().includes("GATE_LOCKED")) resolve();
+    });
+    child.on("exit", () =>
+      reject(new Error("Transaction ended before lock barrier")),
+    );
+  });
+  child.stdin.end(
+    `begin; select id from public.class_sessions where id='${id}' for update; select 'GATE_LOCKED'; select pg_sleep(1); set local role authenticated; set local request.jwt.claim.sub='${actorId}'; select public.save_session_checkout('${id}',1,'${payload}'::jsonb,true); commit;`,
+  );
+  await locked;
+  const registration = await teacher.rpc("register_session_attachment", {
+    p_session: id,
+    p_path: path,
+    p_mime: "image/png",
+    p_size: png.length,
+  });
+  await exit;
+  expect(registration.error?.code).toBe("42501");
+  expect(
+    (
+      await service
+        .from("session_attachments")
+        .select("id")
+        .eq("session_id", id)
+    ).data,
+  ).toEqual([]);
+  expect(
+    (
+      await service
+        .from("class_sessions")
+        .select("status")
+        .eq("id", id)
+        .single()
+    ).data?.status,
+  ).toBe("completed");
+  expect(
+    (await service.storage.from("session-attachments").remove([path])).error,
+  ).toBeNull();
+});
+
+test("Another assigned teacher can read the snapshot but gets no checkout editor", async ({
+  page,
+}) => {
+  const { id, teacher } = await setup();
+  expect(
+    (await teacher.rpc("start_class_session", { p_session: id })).error,
+  ).toBeNull();
+  const other = await actor("teacher3@gami.example");
+  const teacherId = (await other.auth.getUser()).data.user!.id;
+  const assignment = {
+    teacher_id: teacherId,
+    class_id: "21000000-0000-0000-0000-000000000001",
+  };
+  expect(
+    (await service.from("teacher_class_assignments").insert(assignment)).error,
+  ).toBeNull();
+  try {
+    await login(page, "teacher3@gami.example");
+    await page.goto(`/teacher/sessions/${id}`);
+    await expect(
+      page.getByRole("heading", { name: "Chỉ xem buổi học" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Hoàn thành buổi dạy", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByLabel("Thêm ảnh/video")).toHaveCount(0);
+    expect(
+      (
+        await other.rpc("save_session_checkout", {
+          p_session: id,
+          p_version: 1,
+          p_data: {},
+          p_complete: true,
+        })
+      ).error?.code,
+    ).toBe("42501");
+  } finally {
+    expect(
+      (
+        await service
+          .from("teacher_class_assignments")
+          .delete()
+          .eq("teacher_id", teacherId)
+          .eq("class_id", assignment.class_id)
+      ).error,
+    ).toBeNull();
+  }
 });

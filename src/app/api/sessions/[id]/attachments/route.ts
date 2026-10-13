@@ -75,6 +75,7 @@ export async function POST(
     const storage = storageUploader();
     const upload = await storage.upload(path, bytes, {
       contentType: mime,
+      cacheControl: "0",
       upsert: false,
       metadata: { uploaded_by: profile.id },
     });
@@ -132,15 +133,37 @@ export async function GET(
   const db = await supabaseServer();
   const record = await db
     .from("session_attachments")
-    .select("storage_path")
+    .select("storage_path,mime_type")
     .eq("id", attachmentId)
     .eq("session_id", id)
     .maybeSingle();
   if (record.error || !record.data)
     return json({ error: "Không tìm thấy hoặc không có quyền" }, 404);
+  const contentUrl = `/api/sessions/${id}/attachments?id=${attachmentId}&content=1`;
+  if (request.nextUrl.searchParams.get("content") !== "1")
+    return json({ url: contentUrl });
+  // Upstream signed responses may omit cache headers; keep the capability server-side.
   const signed = await db.storage
     .from("session-attachments")
     .createSignedUrl(record.data.storage_path, 60);
   if (signed.error) return json({ error: "Không tạo được link xem" }, 502);
-  return json({ url: signed.data.signedUrl });
+  try {
+    const file = await fetch(signed.data.signedUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(30000),
+    });
+    if (!file.ok || !file.body)
+      return json({ error: "Không tải được file" }, 502);
+    return new NextResponse(file.body, {
+      headers: {
+        "Content-Type": record.data.mime_type,
+        "Content-Disposition": "inline",
+        "Cache-Control": "private, no-store, max-age=0",
+        "Referrer-Policy": "no-referrer",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
+  } catch {
+    return json({ error: "Storage không phản hồi. Hãy thử lại." }, 502);
+  }
 }

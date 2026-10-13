@@ -57,3 +57,13 @@ test("Upload ignores client MIME and requires supported magic bytes", () => {
   mp4.write("isom", 8);
   assert.equal(inspectAttachment(mp4).mime, "video/mp4");
 });
+
+test("Local midnight switches today and future deadline groups at exactly UTC17", () => {
+  const before = new Date("2026-10-13T16:59:59.999Z");
+  const after = new Date("2026-10-13T17:00:00.000Z");
+  assert.equal(schoolDate(before), "2026-10-13");
+  assert.equal(schoolDate(after), "2026-10-14");
+  const future = { status: "open", due_at: "2026-10-13T17:00:01.000Z" } as Task;
+  assert.equal(taskGroup(future, before), "Sắp tới");
+  assert.equal(taskGroup(future, after), "Hôm nay");
+});

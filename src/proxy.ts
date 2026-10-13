@@ -10,9 +10,10 @@ function loginRedirect(response: NextResponse, request: NextRequest) {
 }
 
 export async function proxy(request: NextRequest) {
-  const protectedRoute = /^\/(admin|teacher|cskh|media)(?:\/|$)/.test(
-    request.nextUrl.pathname,
-  );
+  const protectedRoute =
+    /^\/(admin|teacher|cskh|media|students|tasks)(?:\/|$)/.test(
+      request.nextUrl.pathname,
+    );
   const config = supabaseConfig();
   let response = NextResponse.next({ request });
   if (!config)

@@ -26,11 +26,7 @@ export async function sessionData(id: string) {
       .select("*")
       .eq("session_id", id)
       .order("student_id"),
-    db
-      .from("students")
-      .select("id,full_name,student_code")
-      .eq("class_id", session.class_id)
-      .order("student_code"),
+    db.rpc("session_roster", { p_session: id }),
     db.from("session_attachments").select("*").eq("session_id", id),
   ]);
   const notes = await db

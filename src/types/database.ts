@@ -112,6 +112,18 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      student_session_history: {
+        Args: { p_student: string };
+        Returns: {
+          id: string;
+          status: import("@/features/teaching/model").SessionStatus;
+          starts_at: string;
+        }[];
+      };
+      session_roster: {
+        Args: { p_session: string };
+        Returns: { id: string; full_name: string; student_code: string }[];
+      };
       teaching_configuration: {
         Args: Record<string, never>;
         Returns: {

@@ -257,3 +257,19 @@ nav {
 .pulse.yellow {
   border: 2px solid #996a06;
 }
+
+/* Keep focused fields usable in the reduced viewport of a mobile keyboard. */
+input,
+textarea,
+summary {
+  scroll-margin-block: 180px;
+}
+.checkout-footer {
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+@media (max-width: 600px) {
+  .shell:has(input:focus, textarea:focus) .bulk,
+  .shell:has(input:focus, textarea:focus) .checkout-footer {
+    position: static;
+  }
+}
