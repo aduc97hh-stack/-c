@@ -1,16 +1,22 @@
 import { requireStaff } from "@/server/teaching";
-import Link from "next/link";
 import { TaskBoard } from "@/features/teaching/task-board";
+import { AppShell } from "@/components/app-shell";
+
 export default async function Page({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await requireStaff(["teacher"]);
+  const profile = await requireStaff(["teacher"]);
   return (
-    <main className="shell">
-      <Link href="/teacher">← Dashboard</Link>
+    <AppShell
+      role="teacher"
+      name={profile.full_name}
+      active="tasks"
+      title="Việc cần kiểm tra"
+      subtitle="Những học sinh cần xem lại bài, điểm số hoặc tình trạng học tập sau buổi học."
+    >
       <TaskBoard filters={await searchParams} />
-    </main>
+    </AppShell>
   );
 }
