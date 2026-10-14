@@ -1,10 +1,10 @@
-import Link from "next/link";
+import { AppShell } from "@/components/app-shell";\nimport Link from "next/link";
 import { requireStaff, checked } from "@/server/teaching";
 import { supabaseServer } from "@/lib/supabase/server";
 import { createSession } from "@/features/teaching/actions";
 import { displayTime, schoolDate } from "@/features/teaching/model";
 export default async function Page() {
-  await requireStaff(["admin"]);
+  const profile = await requireStaff(["admin"]);
   const db = await supabaseServer();
   const [classes, teachers, sessions, assignments] = await Promise.all([
     db.from("classes").select("id,name").eq("active", true),
@@ -21,7 +21,7 @@ export default async function Page() {
     db.from("teacher_class_assignments").select("*"),
   ]);
   return (
-    <main className="shell">
+    <AppShell role="admin" name={profile.full_name} active="schedule" title="Buổi học" subtitle="Theo dõi trạng thái các buổi học và tiến độ checkout.">
       <Link href="/admin">← Command Center</Link>
       <h1>Lịch lớp</h1>
       <section className="card">
@@ -88,6 +88,6 @@ export default async function Page() {
           </p>
         </article>
       ))}
-    </main>
+    </AppShell>
   );
 }

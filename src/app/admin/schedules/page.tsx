@@ -1,4 +1,4 @@
-import { TemplateSelector } from "@/features/operations/template-selector";
+import { AppShell } from "@/components/app-shell";\nimport { TemplateSelector } from "@/features/operations/template-selector";
 import Link from "next/link";
 import { requireStaff, checked } from "@/server/teaching";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -6,7 +6,7 @@ import { OperationForm } from "@/features/operations/form";
 import { weekdayLabels } from "@/features/operations/model";
 import { schoolDate, displayTime } from "@/features/teaching/model";
 export default async function Page() {
-  await requireStaff(["admin"]);
+  const profile = await requireStaff(["admin"]);
   const db = await supabaseServer();
   const [c, p, t, r, s] = await Promise.all([
     db.from("classes").select("id,name").eq("active", true),
@@ -38,7 +38,7 @@ export default async function Page() {
       new Date(+new Date(today + "T00:00:00+07:00") + 14 * 86400000),
     );
   return (
-    <main className="shell">
+    <AppShell role="admin" name={profile.full_name} active="schedule" title="Lịch dạy" subtitle="Quản lý lịch lặp, đổi giáo viên và các ngoại lệ theo từng buổi.">
       <Link href="/admin/operations">← Vận hành</Link>
       <h1>Lịch học lặp</h1>
       <section className="card">
@@ -186,6 +186,6 @@ export default async function Page() {
         Hiển thị tối đa 100 template/sessions. Generation tối đa 56 ngày mỗi
         lần.
       </p>
-    </main>
+    </AppShell>
   );
 }

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppShell } from "@/components/app-shell";\nimport Link from "next/link";
 import { requireStaff, checked, required } from "@/server/teaching";
 import { supabaseServer } from "@/lib/supabase/server";
 import { OperationForm } from "@/features/operations/form";
@@ -9,7 +9,7 @@ import {
   thresholdLabels,
 } from "@/features/operations/model";
 export default async function Page() {
-  await requireStaff(["admin"]);
+  const profile = await requireStaff(["admin"]);
   const db = await supabaseServer();
   const [sum, conf, c, p, a, mode] = await Promise.all([
     db.rpc("operations_summary", {}),
@@ -30,7 +30,7 @@ export default async function Page() {
     assignments = checked(a) ?? [];
   const config = checked(mode);
   return (
-    <main className="shell">
+    <AppShell role="admin" name={profile.full_name} active="operations" title="Vận hành hàng ngày" subtitle="Điều phối lịch, pilot, cảnh báo và các ngoại lệ cần quản trị.">
       <Link href="/admin">← Command Center</Link>
       <h1>Vận hành hàng ngày</h1>
       <nav>
@@ -162,6 +162,6 @@ export default async function Page() {
           </p>
         </article>
       ))}
-    </main>
+    </AppShell>
   );
 }

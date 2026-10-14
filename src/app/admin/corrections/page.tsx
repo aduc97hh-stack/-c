@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppShell } from "@/components/app-shell";\nimport Link from "next/link";
 import { requireStaff, checked } from "@/server/teaching";
 import { supabaseServer } from "@/lib/supabase/server";
 import { OperationForm } from "@/features/operations/form";
@@ -12,7 +12,7 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await requireStaff(["admin"]);
+  const profile = await requireStaff(["admin"]);
   const db = await supabaseServer();
   const raw = (await searchParams).status;
   const filter =
@@ -49,7 +49,7 @@ export default async function Page({
   const students = checked(s) ?? [],
     profiles = checked(p) ?? [];
   return (
-    <main className="shell">
+    <AppShell role="admin" name={profile.full_name} active="operations" title="Corrections" subtitle="Xem xét và phê duyệt các điều chỉnh dữ liệu sau buổi học.">
       <Link href="/admin/operations">← Vận hành</Link>
       <h1>Correction requests</h1>
       <p>
@@ -113,6 +113,6 @@ export default async function Page({
       ))}
       {!corrections.length && <p>Không có yêu cầu.</p>}
       <p>Tối đa 50 yêu cầu theo bộ lọc; pending ưu tiên cũ nhất.</p>
-    </main>
+    </AppShell>
   );
 }
