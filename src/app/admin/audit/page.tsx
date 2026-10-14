@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { AppShell } from "@/components/app-shell";\nimport Link from "next/link";
 import { requireStaff, checked } from "@/server/teaching";
 import { supabaseServer } from "@/lib/supabase/server";
 import { displayTime } from "@/features/teaching/model";
@@ -7,7 +7,7 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
-  await requireStaff(["admin"]);
+  const profile = await requireStaff(["admin"]);
   const filters = await searchParams;
   const db = await supabaseServer();
   const page = Math.max(0, Math.floor(Number(filters.page) || 0));
@@ -23,7 +23,7 @@ export default async function Page({
   const profiles =
     checked(await db.from("profiles").select("id,full_name")) ?? [];
   return (
-    <main className="shell">
+    <AppShell role="admin" name={profile.full_name} active="operations" title="Nhật ký vận hành" subtitle="Theo dõi thay đổi và dấu vết xử lý trong hệ thống.">
       <Link href="/admin/operations">← Vận hành</Link>
       <h1>Audit trail</h1>
       <form method="GET" className="card">
@@ -96,6 +96,6 @@ export default async function Page({
           </Link>
         )}
       </nav>
-    </main>
+    </AppShell>
   );
 }
