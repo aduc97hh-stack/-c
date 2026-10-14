@@ -1,154 +1,163 @@
 import Link from "next/link";
 import { CommandCenter } from "@/features/teaching/command-center";
+import { AppShell } from "@/components/app-shell";
 import { requireRole } from "@/server/auth";
 import { dashboardData } from "@/server/dashboard";
 import { roleLabels, type Role } from "@/config/roles";
-import { logout, updateProfile } from "@/app/actions";
+import { updateProfile } from "@/app/actions";
+
 export async function Dashboard({ role }: { role: Role }) {
   const profile = await requireRole(role);
   const data = await dashboardData(role);
+
   return (
-    <main className="shell">
-      <header>
-        <div>
-          <p className="eyebrow">GAMI OS · DAILY OPERATIONS</p>
-          <span className="badge">{roleLabels[role]}</span>
-        </div>
-        <form action={logout}>
-          <button>Đăng xuất</button>
-        </form>
-      </header>
-      <h1>Xin chào, {profile.full_name}</h1>
-      <nav>
-        <Link href="/notifications">Thông báo</Link>
-        {role === "admin" && <Link href="/admin/operations">Vận hành / Pilot</Link>}
-        {role === "teacher" && (
-          <>
-            <Link href="/teacher/today">Hôm nay</Link>
-            <Link href="/teacher/tasks">Việc kiểm tra lại bài</Link>
-          </>
-        )}
-        {role === "cskh" && <Link href="/cskh/tasks">Mission Board</Link>}
-      </nav>
+    <AppShell
+      role={role}
+      name={profile.full_name}
+      title={role === "admin" ? "Tổng quan vận hành" : `Xin chào, ${profile.full_name}`}
+      subtitle={
+        role === "admin"
+          ? "Nắm nhanh tình hình học tập, công việc cần xử lý và hoạt động trong ngày."
+          : "Mọi việc cần làm hôm nay được gom về một nơi."
+      }
+    >
       {role === "admin" && <CommandCenter />}
-      <p>Dữ liệu hiển thị theo phân công và quyền truy cập của bạn.</p>
-      <section className="grid" aria-label="Tổng quan">
+
+      <section className="metric-grid" aria-label="Tổng quan">
         {role !== "media" && (
-          <article className="card">
-            <span className="metric">{data.studentCount}</span>Học sinh{" "}
-            {role === "admin" ? "đang hoạt động" : "được phân công"}
+          <article className="metric-card">
+            <div className="metric-icon soft-green">HS</div>
+            <div>
+              <span className="metric-value">{data.studentCount}</span>
+              <p>Học sinh {role === "admin" ? "đang hoạt động" : "được phân công"}</p>
+            </div>
           </article>
         )}
         {(role === "admin" || role === "teacher") && (
-          <article className="card">
-            <span className="metric">{data.classCount}</span>Lớp học
+          <article className="metric-card">
+            <div className="metric-icon soft-blue">L</div>
+            <div>
+              <span className="metric-value">{data.classCount}</span>
+              <p>Lớp học</p>
+            </div>
           </article>
         )}
         {role === "admin" && (
-          <article className="card">
-            <span className="metric">{data.users}</span>Hồ sơ nhân sự
+          <article className="metric-card">
+            <div className="metric-icon soft-orange">NV</div>
+            <div>
+              <span className="metric-value">{data.users}</span>
+              <p>Hồ sơ nhân sự</p>
+            </div>
           </article>
         )}
       </section>
-      {data.classes.length > 0 && (
-        <section className="card">
-          <h2>{role === "teacher" ? "Lớp của tôi" : "Lớp học"}</h2>
-          <ul>
-            {data.classes.map((c) => (
-              <li key={c.id}>{c.name}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-      {role !== "media" && (
-        <section className="card modules">
-          <h2>Học sinh trong phạm vi quyền</h2>
-          {data.studentCount > data.students.length && (
-            <p>
-              Đang hiển thị {data.students.length} trong {data.studentCount} học
-              sinh. Danh sách chi tiết có phân trang sẽ được bổ sung ở module hồ
-              sơ.
-            </p>
-          )}
-          {data.students.length ? (
-            <ul>
-              {data.students.map((s) => (
-                <li key={s.id}>
-                  <Link href={`/students/${s.id}`}>
-                    {s.student_code} · {s.full_name}
-                  </Link>
-                </li>
+
+      <section className="dashboard-grid">
+        {data.classes.length > 0 && (
+          <article className="panel">
+            <div className="panel-heading">
+              <div>
+                <p className="panel-kicker">LỚP HỌC</p>
+                <h2>{role === "teacher" ? "Lớp của tôi" : "Lớp đang hoạt động"}</h2>
+              </div>
+              {role === "admin" && <Link className="text-link" href="/admin/schedules">Quản lý lịch →</Link>}
+            </div>
+            <div className="simple-list">
+              {data.classes.map((c) => (
+                <div className="simple-list-row" key={c.id}>
+                  <span className="dot-indicator" />
+                  <strong>{c.name}</strong>
+                </div>
               ))}
-            </ul>
-          ) : (
-            <p>Chưa có học sinh được phân công.</p>
-          )}
-        </section>
-      )}
-      {role === "admin" && (
-        <section className="card modules">
-          <h2>Quản lý hồ sơ nhân sự</h2>
-          <p>
-            Cấp tài khoản qua Supabase Auth; quản lý vai trò và trạng thái tại
-            đây. Gỡ phân công trước khi đổi vai trò.
-          </p>
-          {data.profiles.map((p) => (
-            <form className="profile-form" action={updateProfile} key={p.id}>
-              <input type="hidden" name="id" value={p.id} />
-              <label>
-                Họ tên
-                <input
-                  name="full_name"
-                  defaultValue={p.full_name}
-                  maxLength={120}
-                  required
-                  disabled={p.role === "admin"}
-                />
-              </label>
-              <label>
-                Vai trò
-                <select
-                  name="role"
-                  defaultValue={p.role}
-                  disabled={p.role === "admin"}
-                >
-                  {Object.entries(roleLabels).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  name="active"
-                  defaultChecked={p.active}
-                  disabled={p.role === "admin"}
-                />{" "}
-                Đang hoạt động
-              </label>
-              <button disabled={p.role === "admin"}>Lưu hồ sơ</button>
-            </form>
-          ))}
-        </section>
-      )}
-      <section className="card modules">
-        <h2>
-          {role === "admin"
-            ? "Command Center & GAMI Pulse"
-            : role === "teacher"
-              ? "Lịch dạy & kết thúc buổi học"
-              : role === "cskh"
-                ? "Mission Board"
-                : "Media Hub"}
-        </h2>
-        <p>
-          {role === "media"
-            ? "Media Hub được kích hoạt ở Phase 5. Hiện tại chưa có dữ liệu media và chưa có quyền đọc dữ liệu học sinh."
-            : "Các nghiệp vụ buổi học, công việc và hồ sơ học sinh đã sẵn sàng qua các liên kết phía trên."}
-        </p>
+            </div>
+          </article>
+        )}
+
+        {role !== "media" && (
+          <article className="panel">
+            <div className="panel-heading">
+              <div>
+                <p className="panel-kicker">HỌC SINH</p>
+                <h2>Trong phạm vi quyền</h2>
+              </div>
+              <span className="mini-count">{data.studentCount}</span>
+            </div>
+            {data.students.length ? (
+              <div className="student-list">
+                {data.students.map((s) => (
+                  <Link className="student-row" href={`/students/${s.id}`} key={s.id}>
+                    <span className="student-avatar">{s.full_name.slice(0, 1).toUpperCase()}</span>
+                    <span>
+                      <strong>{s.full_name}</strong>
+                      <small>{s.student_code}</small>
+                    </span>
+                    <span className="row-arrow">→</span>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state">
+                <div className="empty-icon">◎</div>
+                <strong>Chưa có học sinh</strong>
+                <p>Thêm dữ liệu pilot để bắt đầu thử luồng vận hành.</p>
+              </div>
+            )}
+          </article>
+        )}
       </section>
-    </main>
+
+      {role === "admin" && (
+        <section className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="panel-kicker">NHÂN SỰ</p>
+              <h2>Quản lý hồ sơ</h2>
+            </div>
+            <span className="mini-count">{data.profiles.length}</span>
+          </div>
+          <p className="muted">
+            Tài khoản được tạo qua Supabase Auth; tại đây quản lý tên, vai trò và trạng thái sử dụng.
+          </p>
+          <div className="profile-grid">
+            {data.profiles.map((p) => (
+              <form className="profile-card" action={updateProfile} key={p.id}>
+                <input type="hidden" name="id" value={p.id} />
+                <div className="profile-card-head">
+                  <div className="avatar large">{p.full_name.slice(0, 1).toUpperCase()}</div>
+                  <div>
+                    <strong>{p.full_name}</strong>
+                    <span className="role-chip">{roleLabels[p.role]}</span>
+                  </div>
+                </div>
+                <label>
+                  Họ tên
+                  <input
+                    name="full_name"
+                    defaultValue={p.full_name}
+                    maxLength={120}
+                    required
+                    disabled={p.role === "admin"}
+                  />
+                </label>
+                <label>
+                  Vai trò
+                  <select name="role" defaultValue={p.role} disabled={p.role === "admin"}>
+                    {Object.entries(roleLabels).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="check-row">
+                  <input type="checkbox" name="active" defaultChecked={p.active} disabled={p.role === "admin"} />
+                  <span>Đang hoạt động</span>
+                </label>
+                <button disabled={p.role === "admin"}>Lưu hồ sơ</button>
+              </form>
+            ))}
+          </div>
+        </section>
+      )}
+    </AppShell>
   );
 }
